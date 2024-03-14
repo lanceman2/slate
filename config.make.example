@@ -1,7 +1,42 @@
 # This file defines possible make "configuration" variables.
 
+PREFIX = /usr/local/encap/slate
 
-CPPFLAGS := -DDEBUG
+
+# Set CPPFLAGS for debug build options:
+#
+#
+# SPEW_LEVEL_* controls macros in lib/debug.h
+#
+# The following may be defined; defining them turns on the following CPP
+# macro functions that are in debug.h which is a source file for
+# libslate.so and other binary files.
+#
+# CPP macro flag         makes SPEW CPP marco functions
+#-----------------       ------------------------------
+#
+# DEBUG             -->  DASSERT()
+#
+# SPEW_LEVEL_DEBUG  -->  DSPEW() INFO() NOTICE() WARN() ERROR()
+# SPEW_LEVEL_INFO   -->  INFO() NOTICE() WARN() ERROR()
+# SPEW_LEVEL_NOTICE -->  NOTICE() WARN() ERROR()
+# SPEW_LEVEL_WARN   -->  WARN() ERROR()
+# SPEW_LEVEL_ERROR  -->  ERROR()
+#
+#
+# If you really need to understand what these do look in
+# the file lib/debug.h
+#
+# always on is      -->  ASSERT()
+#
+
+
+# Examples:
+#CPPFLAGS := -DSPEW_LEVEL_NOTICE
+CPPFLAGS := -DDEBUG -DSPEW_LEVEL_DEBUG
+
+#CPPFLAGS := -DDEBUG -DSPEW_LEVEL_INFO
+
 
 
 # C compiler option flags

@@ -1,0 +1,12 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: slate
+Description: slate, GUI library
+Version: @VERSION@
+Requires: wayland-client >= 1.21.0
+Requires.private:
+Libs: -L${libdir} -lslate
+Cflags: -I${includedir}

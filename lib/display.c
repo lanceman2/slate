@@ -120,7 +120,7 @@ void slDisplay_destroy(struct SlDisplay *d) {
 }
 
 
-#if 0
+#if 0 // We may need this.
 static void __attribute__((constructor)) create(void) {
 
     DSPEW();

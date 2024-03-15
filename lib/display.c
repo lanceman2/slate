@@ -120,7 +120,7 @@ void slDisplay_destroy(struct SlDisplay *d) {
 }
 
 
-#if 0 // We may need this in the future.
+#if 0 // We may need this.
 static void __attribute__((constructor)) create(void) {
 
     DSPEW();
@@ -131,6 +131,9 @@ static void __attribute__((constructor)) create(void) {
 static void __attribute__((destructor)) destroy(void) {
 
     if(getenv("SLATE_NO_CLEANUP"))
+        // TODO: I'm not sure if this is a good idea.
+        // But, I can test when the slDisplay_destroy() works and does not
+        // work correctly.
         return;
 
     DSPEW();

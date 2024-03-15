@@ -8,9 +8,9 @@
 int main(void) {
 
 #ifdef SLATE_NO_CLEANUP
-    // This will make the libslate.so destructor bail before
-    // cleaning up.  And so we are testing that this code cleans
-    // up all the resources created in this file.
+    // This will make the libslate.so destructor bail before cleaning up.
+    // And so we are testing that this code cleans up all the resources
+    // created in this file.
     //
     ASSERT(0 == setenv("SLATE_NO_CLEANUP", "1", 1));
 #endif
@@ -20,7 +20,8 @@ int main(void) {
     // Not calling slDisplay_destroy():
     //
     // We'll be leaking memory if the libslate.so destructor does not
-    // cleanup.
+    // cleanup.  So testing this with and without valgrind gives different
+    // results.
 
     return 0;
 }

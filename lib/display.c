@@ -120,7 +120,7 @@ void slDisplay_destroy(struct SlDisplay *d) {
 }
 
 
-#if 0 // We may need this.
+#if 0 // We may need this in the future.
 static void __attribute__((constructor)) create(void) {
 
     DSPEW();
@@ -134,7 +134,7 @@ static void __attribute__((destructor)) destroy(void) {
         return;
 
     DSPEW();
-    
+
     // This will cleanup after a sloppy user of this API.
     // 
     while(lastDisplay)

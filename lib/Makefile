@@ -8,7 +8,7 @@ WL_LDFLAGS := $(shell pkg-config wayland-client --libs)
 
 
 ifeq ($(WL_LDFLAGS),)
-# Make make fail if pkg-config cannot find wayland-client
+# Make make fail if pkg-config cannot find wayland-client.
 #
 # TODO: Are there other common wayland-client failure modes that can
 # happen when pkg-config can find wayland-client?  Like with the

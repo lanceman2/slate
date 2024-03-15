@@ -17,7 +17,9 @@ ifeq ($(WL_LDFLAGS),)
   $(error pkg-config wayland-client --libs FAILED)
 endif
 
-
+# TODO: Bug in wayland-protocols pkgdatadir adds extra "/"
+# like: //usr/share/wayland-protocols  Mar 15 2024
+#
 WL_PROTOCOL := $(shell pkg-config wayland-protocols\
  --variable=pkgdatadir)/stable/xdg-shell/xdg-shell.xml
 WL_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
@@ -26,7 +28,8 @@ xdg-shell-protocol.c:
 	$(WL_SCANNER) private-code $(WL_PROTOCOL) xdg-shell-protocol.c
 
 xdg-shell-client-protocol.h:
-	$(WL_SCANNER) client-header $(WL_PROTOCOL) xdg-shell-client-protocol.h
+	$(WL_SCANNER) client-header $(WL_PROTOCOL)\
+ xdg-shell-client-protocol.h
 
 
 BUILD_NO_INSTALL := xdg-shell-protocol.c xdg-shell-client-protocol.h
@@ -34,7 +37,7 @@ BUILD_NO_INSTALL := xdg-shell-protocol.c xdg-shell-client-protocol.h
 libslate.so_SOURCES :=\
  xdg-shell-protocol.c\
  debug.c\
- app.c\
+ display.c\
  window.c
 libslate.so_CPPFLAGS := $(WL_CFLAGS)
 libslate.so_CFLAGS :=\

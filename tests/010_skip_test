@@ -1,0 +1,5 @@
+#!/bin/bash
+
+
+# skip this test by returning 123
+exit 123

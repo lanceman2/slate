@@ -1,2 +1,9 @@
-slWindow_create
+slAssertAction
+sl_assertAction
 sl_spew
+slGetLibSpewLevel
+slSetSpewLevel
+slApp_create
+slApp_destroy
+slWindow_create
+slWindow_destroy

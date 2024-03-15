@@ -1,14 +1,14 @@
 
 #include "../include/slate.h"
 
-#include "./debug.h"
-
+#include "window.h"
 
 
 struct SlWindow *slWindow_create(void) {
 
-    DSPEW("SLATE_VERSION=%s", SLATE_VERSION);
-
     return 0;
 }
 
+void slWindow_destroy(struct SlWindow *window) {
+
+}

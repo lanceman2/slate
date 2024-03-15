@@ -1,6 +1,6 @@
 
 
-struct SlWindow {
+struct SlApp {
 
     int dummy;
 };

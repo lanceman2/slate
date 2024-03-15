@@ -34,9 +34,14 @@ as we define it from the \c SLATE_MAJOR, \c SLATE_MINOR, and \c SLATE_EDIT.
 extern "C" {
 #endif
 
-    struct SlWindow;
+struct SlApp;
+struct SlWindow;
 
-    SL_EXPORT struct SlWindow *slWindow_create(void);
+SL_EXPORT struct SlApp *slApp_create(void);
+SL_EXPORT void slApp_destroy(struct SlApp *app);
+
+SL_EXPORT struct SlWindow *slWindow_create(void);
+SL_EXPORT void slWindow_destroy(struct SlWindow *window);
 
 #ifdef __cplusplus
 }

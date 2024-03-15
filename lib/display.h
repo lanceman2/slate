@@ -2,5 +2,5 @@
 
 struct SlDisplay {
 
-    int dummy;
+    struct SlDisplay *prev, *next;
 };

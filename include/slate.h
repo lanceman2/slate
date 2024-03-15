@@ -38,10 +38,10 @@ struct SlDisplay;
 struct SlWindow;
 
 SL_EXPORT struct SlDisplay *slDisplay_create(void);
-SL_EXPORT void slDisplay_destroy(struct SlDisplay *display);
+SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
-SL_EXPORT struct SlWindow *slWindow_create(void);
-SL_EXPORT void slWindow_destroy(struct SlWindow *window);
+SL_EXPORT struct SlWindow *slWindow_create(struct SlDisplay *d);
+SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -ex
+
+
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # testing with valgrind
+    if ./_034_displayFailCleanup ; then
+        echo "This should have failed"
+        exit 1
+    fi
+    set +x
+    echo -e "\nNote: valgrind should have just reported a failure"
+    echo -e "\nThat is SUCCESS in this valgrind testing of: $0\n"
+    exit 0
+fi
+
+# Not running with valgrind so this should pass.
+./_034_displayFailCleanup
+

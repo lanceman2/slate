@@ -8,7 +8,7 @@
 #include "window.h"
 
 
-struct SlWindow *slWindow_create(void) {
+struct SlWindow *slWindow_create(struct SlDisplay *d) {
 
     struct SlWindow *w = calloc(1, sizeof(*w));
     ASSERT(w, "calloc(1,%zu) failed", sizeof(*w));

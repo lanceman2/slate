@@ -6,7 +6,7 @@ set -ex
 
 if [  -n "${VaLGRIND_RuN}" ] ; then
     # testing with valgrind
-    if ./_034_displayFailCleanup ; then
+    if ./displayFailCleanup ; then
         echo "This should have failed"
         exit 1
     fi
@@ -17,5 +17,5 @@ if [  -n "${VaLGRIND_RuN}" ] ; then
 fi
 
 # Not running with valgrind so this should pass.
-./_034_displayFailCleanup
+./displayFailCleanup
 

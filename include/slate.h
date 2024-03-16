@@ -1,3 +1,7 @@
+#ifndef __SLATE_H__
+#define __SLATE_H__
+
+#include <stdbool.h>
 
 /**
 \c SLATE_MAJOR is the major version number.
@@ -22,7 +26,8 @@ but not often. */
 \c SLATE_VERSION is the version of this slate software project
 as we define it from the \c SLATE_MAJOR, \c SLATE_MINOR, and \c SLATE_EDIT.
 */
-#define SLATE_VERSION  (SLATE_STR(SLATE_MAJOR) "." SLATE_STR(SLATE_MINOR) "." SLATE_STR(SLATE_EDIT))
+#define SLATE_VERSION  (SLATE_STR(SLATE_MAJOR) "." \
+        SLATE_STR(SLATE_MINOR) "." SLATE_STR(SLATE_EDIT))
 
 
 #ifndef SL_EXPORT
@@ -38,6 +43,7 @@ struct SlDisplay;
 struct SlWindow;
 
 SL_EXPORT struct SlDisplay *slDisplay_create(void);
+SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
 SL_EXPORT struct SlWindow *slWindow_create(struct SlDisplay *d);
@@ -46,3 +52,6 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 #ifdef __cplusplus
 }
 #endif
+
+
+#endif // #ifndef __SLATE_H__

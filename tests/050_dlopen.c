@@ -9,7 +9,7 @@
 // First read this code and understand it.  Please do not check-in a
 // crap/test edit of this file (especially if it fails).
 //
-// This program loads ./_050_DSO.so via dlopen(2).
+// This program loads ./slateDSO.so via dlopen(2).
 
 #include <stdlib.h>
 #include <dlfcn.h>
@@ -49,7 +49,7 @@ int main(void) {
     ASSERT(0 == setenv("SLATE_NO_CLEANUP", "1", 1));
 #endif
 
-    void *dlh = dlopen("./_050_DSO.so", RTLD_NOW);
+    void *dlh = dlopen("./slateDSO.so", RTLD_NOW);
     ASSERT(dlh);
 
     struct SlDisplay *(*makeDisplay)(void) = dlsym(dlh, "makeDisplay");

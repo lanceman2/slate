@@ -86,15 +86,6 @@ void slDisplay_destroy(struct SlDisplay *d) {
     CHECK(pthread_mutex_lock(&d->mutex));
 
     // Destroy all slate windows that are owned by this display (d).
-    //
-    // There may be just one wayland display, but we have many slate
-    // displays that own other data/function things like slate windows.  I
-    // knew I made this slate display abstraction for some reason.  A
-    // program can have many modules that have a display (or displays)
-    // that do not necessarily know about each other (other modules).  And
-    // the displays in each module can have any number of slate windows.
-    // It's this idea of modular coding, putting together bits and pieces
-    // code that do not necessarily know about each other.
     while(d->lastWindow) _slWindow_destroy(d, d->lastWindow);
 
     CHECK(pthread_mutex_unlock(&d->mutex));

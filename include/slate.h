@@ -29,7 +29,9 @@ as we define it from the \c SLATE_MAJOR, \c SLATE_MINOR, and \c SLATE_EDIT.
 #define SLATE_VERSION  (SLATE_STR(SLATE_MAJOR) "." \
         SLATE_STR(SLATE_MINOR) "." SLATE_STR(SLATE_EDIT))
 
-
+// This file may get installed in the "system" so we do not polute the CPP
+// (C pre-processor) namespace by defining EXPORT, instead we define
+// SL_EXPORT
 #ifndef SL_EXPORT
 #  define SL_EXPORT extern
 #endif
@@ -42,6 +44,8 @@ extern "C" {
 struct SlDisplay;
 struct SlWindow;
 
+
+// The function symbols that the libslate.so library provides:
 SL_EXPORT struct SlDisplay *slDisplay_create(void);
 SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);

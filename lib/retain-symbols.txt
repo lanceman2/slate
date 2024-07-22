@@ -1,10 +1,9 @@
-slAssertAction
-sl_assertAction
-sl_spew
-slGetLibSpewLevel
-slSetSpewLevel
 slDisplay_create
 slDisplay_dispatch
 slDisplay_destroy
 slWindow_create
 slWindow_destroy
+assertAction
+getLibSpewLevel
+setSpewLevel
+spew

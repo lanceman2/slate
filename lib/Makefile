@@ -42,7 +42,8 @@ libslate.so_SOURCES :=\
 libslate.so_CPPFLAGS := $(WL_CFLAGS)
 libslate.so_CFLAGS :=\
  -fvisibility=hidden\
- -DSL_EXPORT="__attribute__((visibility(\"default\"))) extern"
+ -DSL_EXPORT="__attribute__((visibility(\"default\"))) extern"\
+ -DEXPORT="SL_EXPORT"
 libslate.so_LDFLAGS :=\
  $(WL_LDFLAGS)\
  -Wl,--retain-symbols-file=retain-symbols.txt

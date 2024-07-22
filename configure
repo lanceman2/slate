@@ -19,6 +19,10 @@ fi
 if [ ! -e config.make ] ; then
     echo -e "# This is a generated file\n" > config.make
     cat config.make.example >> config.make
+else
+    set +x
+    echo -e "config.make exists"
+    set -x
 fi
 
 

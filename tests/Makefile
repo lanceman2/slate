@@ -26,6 +26,7 @@ displayFailCleanup_CPPFLAGS := -DSLATE_NO_CLEANUP
 slateDSO.so_SOURCES := slateDSO.c
 slateDSO.so_LDFLAGS := $(SL_LIB)
 
+# This test doe not make a window, just a display.
 050_dlopen_SOURCES := dlopen.c ../lib/debug.c
 
 052_dlopen_SOURCES := dlopen.c ../lib/debug.c

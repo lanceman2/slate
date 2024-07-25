@@ -26,7 +26,10 @@ displayFailCleanup_CPPFLAGS := -DSLATE_NO_CLEANUP
 slateDSO.so_SOURCES := slateDSO.c
 slateDSO.so_LDFLAGS := $(SL_LIB)
 
-050_dlopen_SOURCES := 050_dlopen.c ../lib/debug.c
+050_dlopen_SOURCES := dlopen.c ../lib/debug.c
+
+052_dlopen_SOURCES := dlopen.c ../lib/debug.c
+052_dlopen_CPPFLAGS := -DFUNC=\"makeDisplayAndWindows\"
 
 _060_window_SOURCES := _060_window.c
 _060_window_LDFLAGS := $(SL_LIB)

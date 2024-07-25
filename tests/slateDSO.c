@@ -18,6 +18,17 @@ void destroyDisplay(struct SlDisplay *d) {
     slDisplay_destroy(d);
 }
 
+static const uint32_t NUM_WINS = 10; 
 
+struct SlDisplay *makeDisplayAndWindows(void) {
 
+    WARN();
+
+    struct SlDisplay *d = slDisplay_create();
+
+    for(int i=0; i<NUM_WINS; ++i)
+        slWindow_create(d);
+
+    return d;
+}
 

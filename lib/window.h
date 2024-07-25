@@ -11,5 +11,6 @@ struct SlWindow {
 };
 
 
+// slDisplay_destroy() needs to call this.
 extern void _slWindow_destroy(struct SlDisplay *d,
         struct SlWindow *w);

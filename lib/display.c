@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <wayland-client.h>
 
+#include "xdg-shell-client-protocol.h"
+
 #include "../include/slate.h"
 
 #include "debug.h"
@@ -25,16 +27,147 @@
 // later found that they do.  Now I just assume everyone writes shitty
 // code; I know I do.
 //
-static struct wl_display *wl_display = 0;
+// returned from wl_display_connect().
+//
+static struct wl_display  *wl_display = 0;
+static struct wl_registry *wl_registry = 0;
+static struct wl_seat     *wl_seat = 0;
+static uint32_t handle_global_error;
 
+// Protect the processes list of SlDisplay structs
+// in struct SlDisplay::firstWindow,lastWindow
+//
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 // Count the number of successful slDisplay_create() calls
 // that are not paired with slDisplay_destroy().
 static uint32_t displayCount = 0;
 
+
+
+static void enter(void *, struct wl_pointer *, uint32_t,
+        struct wl_surface *, wl_fixed_t,  wl_fixed_t) {
+    DSPEW();
+}
+
+static void leave(void *, struct wl_pointer *, uint32_t,
+        struct wl_surface *) {
+    DSPEW();
+}
+
+static void motion(void *, struct wl_pointer *, uint32_t,
+        wl_fixed_t,  wl_fixed_t) {
+    DSPEW();
+}
+
+static void button(void *, struct wl_pointer *, uint32_t,  uint32_t,
+        uint32_t,  uint32_t) {
+    DSPEW();
+}
+
+static void axis(void *, struct wl_pointer *, uint32_t,
+        uint32_t,  wl_fixed_t) {
+    DSPEW();
+}
+
+static const struct wl_pointer_listener pointer_listener = {
+    .enter = enter,
+    .leave = leave,
+    .motion = motion,
+    .button = button,
+    .axis = axis
+};
+
+static void seat_handle_capabilities(void *data, struct wl_seat *seat,
+		uint32_t capabilities) {
+    // If the wl_seat has the pointer capability, start listening to pointer
+    // events
+    if(capabilities & WL_SEAT_CAPABILITY_POINTER) {
+        struct wl_pointer *pointer = wl_seat_get_pointer(seat);
+	wl_pointer_add_listener(pointer, &pointer_listener, seat);
+    }
+}
+
+static const struct wl_seat_listener seat_listener = {
+	.capabilities = seat_handle_capabilities,
+};
+
+
+static void handle_global(void *data, struct wl_registry *registry,
+            uint32_t name, const char *interface, uint32_t version) {
+
+    DASSERT(wl_registry == registry);
+
+    DSPEW("name=\"%s\" (%" PRIu32 ")", wl_shm_interface.name, name);
+
+    if(!strcmp(interface, wl_shm_interface.name)) {
+	//shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
+    } else if(!strcmp(interface, wl_seat_interface.name)) {
+        // I'm guessing we can only get one wayland seat.
+        DASSERT(wl_seat == 0);
+        wl_seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
+        if(!wl_seat) {
+            ERROR("wl_registry_bind(,,) for seat failed");
+            handle_global_error = 1;
+            return;
+        }
+	if(wl_seat_add_listener(wl_seat, &seat_listener, NULL)) {
+            ERROR("wl_seat_add_listener() failed");
+            handle_global_error = 2;
+        }
+    } else if(!strcmp(interface, wl_compositor_interface.name)) {
+	//compositor = wl_registry_bind(registry, name,
+	//&wl_compositor_interface, 1);
+    } else if(!strcmp(interface, xdg_wm_base_interface.name)) {
+	//xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
+	//xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
+    }
+}
+
+static void handle_global_remove(void *data, struct wl_registry *registry,
+		uint32_t name) {
+    // I care to see this.
+    ERROR("called for name=%" PRIu32, name);
+}
+
+static const struct wl_registry_listener registry_listener = {
+    .global = handle_global,
+    .global_remove = handle_global_remove,
+};
+
+
 // The ends of the list of displays:
 static struct SlDisplay *firstDisplay = 0, *lastDisplay = 0;
+
+
+static inline void CleanupProcess(void) {
+
+    DASSERT(wl_display);
+
+    if(wl_seat) {
+        // cleanup seat
+        //
+        // What do ya know; Valgrind showed me that not calling this
+        // leaked memory.  I'm so happy that libwayland-client.so
+        // cleans up after itself.  Life is good.
+        wl_seat_release(wl_seat);
+        wl_seat = 0;
+    }
+
+    // valgrind shows this to cleanup something:
+    if(wl_registry) {
+        wl_registry_destroy(wl_registry);
+        wl_registry = 0;
+    }
+    // A valgrind test shows that this cleans up.  Removing the
+    // wl_display_disconnect() below makes the valgrind tests fail.
+    //
+    //   ../tests/030_display.c and ../tests/032_displayN.c
+    //
+    wl_display_disconnect(wl_display);
+    wl_display = 0;
+}
 
 
 struct SlDisplay *slDisplay_create(void) {
@@ -50,6 +183,31 @@ struct SlDisplay *slDisplay_create(void) {
             ERROR("wl_display_connect() failed");
             goto finish;
         }
+        // I think that there is only one of these registry things per
+        // process too (like wl_display).  We do not need a copy of it
+        // after this call given that we are given it back to us in the
+        // listener callback functions.
+        wl_registry = wl_display_get_registry(wl_display);
+        if(!wl_registry) {
+            ERROR("wl_display_get_registry(%p) failed", wl_display);
+            goto finish;
+        }
+        if(wl_registry_add_listener(wl_registry, &registry_listener, 0)) {
+            ERROR("wl_registry_add_listener(%p, %p,) failed",
+                    wl_registry, &registry_listener);
+            CleanupProcess();
+            goto finish;
+        }
+        handle_global_error = 0;
+        if(wl_display_roundtrip(wl_display) == -1 ||
+                handle_global_error) {
+            ERROR("wl_display_roundtrip(%p) failed handle_global_error=%"
+                    PRIu32, wl_display, handle_global_error);
+            // TODO: I see no way to get an error value out of handle_global()
+            // so I added variable handle_global_error.
+            CleanupProcess();
+            goto finish;
+	}
     }
 
     d = calloc(1, sizeof(*d));
@@ -121,15 +279,8 @@ void slDisplay_destroy(struct SlDisplay *d) {
     DZMEM(d, sizeof(*d));
     free(d);
 
-    if(displayCount == 0) {
-        // A valgrind test shows that this cleans up.  Removing the
-        // wl_display_disconnect below makes the valgrind tests fail.
-        //
-        //   ../tests/030_display.c and ../tests/032_displayN.c
-        //
-        wl_display_disconnect(wl_display);
-        wl_display = 0;
-    }
+    if(displayCount == 0)
+        CleanupProcess();
 
     CHECK(pthread_mutex_unlock(&mutex));
 }

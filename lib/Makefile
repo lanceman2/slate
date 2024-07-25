@@ -31,8 +31,10 @@ xdg-shell-client-protocol.h:
 	$(WL_SCANNER) client-header $(WL_PROTOCOL)\
  xdg-shell-client-protocol.h
 
-
-BUILD_NO_INSTALL := xdg-shell-protocol.c xdg-shell-client-protocol.h
+# We need to build xdg-shell-client-protocol.h before we create depend
+# files:
+PRE_BUILD := xdg-shell-client-protocol.h
+BUILD_NO_INSTALL := xdg-shell-protocol.c
 
 libslate.so_SOURCES :=\
  xdg-shell-protocol.c\

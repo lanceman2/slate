@@ -8,10 +8,25 @@ int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
 
-    for(int i=0; i<10; ++i)
-        slWindow_create(d);
+    const uint32_t NUM_WINS = 10;
+    
+    struct SlWindow *w[NUM_WINS];
 
-    // Let the libslate.so destructor cleanup the display and windows.
+    for(int i=0; i<NUM_WINS; ++i)
+        w[i] = slWindow_create(d);
+
+#ifdef CLEANUP
+    // This will get done in the libslate.so destructor any way, but
+    // we still test for this slWindow_destroy() here.
+    for(int i=0; i<NUM_WINS; ++i)
+        slWindow_destroy(w[i]);
+#else
+    // Let the libslate.so destructor cleanup the display and windows
+    // if CLEANUP is not defined. 
+
+    // Fix -Werror=unused-but-set-variable
+    fprintf(stderr, "w=%p\n", w);
+#endif
 
     return 0;
 }

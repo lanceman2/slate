@@ -34,7 +34,11 @@ _060_window_CPPFLAGS := -DCLEANUP
 
 062_windows_SOURCES := 062_windows.c
 062_windows_LDFLAGS := $(SL_LIB)
-062_windows_CPPFLAGS := -DCLEANUP
+
+064_windows_SOURCES := 062_windows.c
+064_windows_LDFLAGS := $(SL_LIB)
+064_windows_CPPFLAGS := -DCLEANUP
+
 
 
 _061_window_noCleanup_SOURCES := _060_window.c

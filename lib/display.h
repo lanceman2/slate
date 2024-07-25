@@ -1,3 +1,5 @@
+//http://wayland-client-d.dpldocs.info/wayland.client.protocol.wl_registry_listener.html
+
 // There may be just one wayland display, but we have many slate
 // displays that own other data/function things like slate windows.  I
 // knew I made this slate display abstraction for some reason.  A
@@ -18,6 +20,6 @@ struct SlDisplay {
     // List of slate windows owned by this display.
     struct SlWindow *firstWindow, *lastWindow;
 
-    pthread_mutex_t mutex;
+    pthread_mutex_t mutex; // protect this struct data
 };
 

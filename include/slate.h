@@ -2,6 +2,7 @@
 #define __SLATE_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
 \c SLATE_MAJOR is the major version number.
@@ -50,7 +51,8 @@ SL_EXPORT struct SlDisplay *slDisplay_create(void);
 SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
-SL_EXPORT struct SlWindow *slWindow_create(struct SlDisplay *d);
+SL_EXPORT struct SlWindow *slWindow_createTop(struct SlDisplay *d,
+        uint32_t w, uint32_t h, int32_t x, int32_t y);
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
 #ifdef __cplusplus

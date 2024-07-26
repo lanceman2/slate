@@ -10,33 +10,34 @@
 #include "display.h"
 
 
-struct SlWindow *slWindow_create(struct SlDisplay *d) {
+struct SlWindow *slWindow_createTop(struct SlDisplay *d,
+        uint32_t w, uint32_t h, int32_t x, int32_t y) {
 
     ASSERT(d);
 
-    struct SlWindow *w = calloc(1, sizeof(*w));
-    ASSERT(w, "calloc(1,%zu) failed", sizeof(*w));
+    struct SlWindow *win = calloc(1, sizeof(*win));
+    ASSERT(win, "calloc(1,%zu) failed", sizeof(*win));
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
-    // Add w to the displays windows list:
+    // Add win to the displays windows list:
     if(d->lastWindow) {
         DASSERT(d->firstWindow);
         DASSERT(!d->lastWindow->next);
         DASSERT(!d->firstWindow->prev);
-        d->lastWindow->next = w;
-        w->prev = d->lastWindow;
+        d->lastWindow->next = win;
+        win->prev = d->lastWindow;
     } else {
         DASSERT(!d->firstWindow);
-        d->firstWindow = w;
+        d->firstWindow = win;
     }
-    d->lastWindow = w;
+    d->lastWindow = win;
 
-    w->display = d;
+    win->display = d;
 
     CHECK(pthread_mutex_unlock(&d->mutex));
 
-    return w;
+    return win;
 }
 
 void _slWindow_destroy(struct SlDisplay *d,

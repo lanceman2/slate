@@ -72,10 +72,6 @@ int main(void) {
     void *dlh = dlopen("./slateDSO.so", RTLD_NOW);
     ASSERT(dlh);
 
-#ifndef FUNC
-#  define FUNC "makeDisplay"
-#endif
-
     struct SlDisplay *(*makeDisplay)(void) = dlsym(dlh, FUNC);
     ASSERT(makeDisplay);
 

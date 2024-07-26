@@ -28,6 +28,7 @@ slateDSO.so_LDFLAGS := $(SL_LIB)
 
 # This test doe not make a window, just a display.
 050_dlopen_SOURCES := dlopen.c ../lib/debug.c
+050_dlopen_CPPFLAGS := -DFUNC=\"makeDisplay\"
 
 052_dlopen_SOURCES := dlopen.c ../lib/debug.c
 052_dlopen_CPPFLAGS := -DFUNC=\"makeDisplayAndWindows\"

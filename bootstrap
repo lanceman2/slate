@@ -3,11 +3,11 @@
 # Download some files from github.com and verify them with sha512sum.
 
 
-qb_tag=0.3
+qb_tag=0.4
 qb_url=https://raw.githubusercontent.com/lanceman2/quickbuild/$qb_tag/quickbuild.make
-qb_sha512sum=43797aad25bea3a85a105d69b9315063c5a\
-32e586d88264162124c588bc982806202f4bcf6fc0aa1fb7\
-470111c3b310c5fbae764f551b5737af82cdfcf44d51d
+qb_sha512sum=df58b143ab84d7f30dfae36c869226f6a6d3\
+299dd14193e4623cf23381ae5cf14aca7781adfee6a5ac9cc\
+99b1cc751cdd2974cda426647718ab9f669c35d652e
 
 debug_tag=52cd14fab044ea217e2dd3b4ebdc2faf63cd4fcb
 debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/

@@ -51,6 +51,4 @@ _061_window_noCleanup_LDFLAGS := $(SL_LIB)
 
 
 
-
-
 include ../quickbuild.make

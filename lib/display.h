@@ -23,3 +23,11 @@ struct SlDisplay {
     pthread_mutex_t mutex; // protect this struct data
 };
 
+
+// Window related globals that we think will be singletons.
+// We need to see them in display.c and window.c.
+extern struct wl_shm *shm;
+extern struct wl_compositor *compositor;
+extern struct xdg_wm_base *xdg_wm_base;
+
+

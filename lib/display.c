@@ -13,6 +13,12 @@
 #include "display.h"
 
 
+
+struct wl_shm *shm = 0;
+struct wl_compositor *compositor = 0;
+struct xdg_wm_base *xdg_wm_base = 0;
+
+
 // wl_display is a singleton object.  That's one point against Wayland.
 //
 // I guess that means there is zero or one global instances in existence
@@ -26,13 +32,14 @@
 // leaked system resources (file descriptors and memory mappings), and
 // later found that they do.  Now I just assume everyone writes shitty
 // code; I know I do.
-//
+
 // returned from wl_display_connect().
-//
 static struct wl_display  *wl_display = 0;
+
 static struct wl_registry *wl_registry = 0;
 static struct wl_seat     *wl_seat = 0;
 static uint32_t handle_global_error;
+
 
 // Protect the processes list of SlDisplay structs
 // in struct SlDisplay::firstWindow,lastWindow
@@ -44,6 +51,17 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 // that are not paired with slDisplay_destroy().
 static uint32_t displayCount = 0;
 
+
+static void xdg_wm_base_handle_ping(void *data,
+		struct xdg_wm_base *xdg_wm_base, uint32_t serial) {
+    // The compositor will send us a ping event to check that we're responsive.
+    // We need to send back a pong request immediately.
+    xdg_wm_base_pong(xdg_wm_base, serial);
+}
+
+static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+    .ping = xdg_wm_base_handle_ping
+};
 
 
 static void enter(void *, struct wl_pointer *, uint32_t,
@@ -90,7 +108,7 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
 }
 
 static const struct wl_seat_listener seat_listener = {
-	.capabilities = seat_handle_capabilities,
+    .capabilities = seat_handle_capabilities,
 };
 
 
@@ -99,31 +117,50 @@ static void handle_global(void *data, struct wl_registry *registry,
 
     DASSERT(wl_registry == registry);
 
-    DSPEW("name=\"%s\" (%" PRIu32 ")", wl_shm_interface.name, name);
+    //DSPEW("name=\"%s\" (%" PRIu32 ")", wl_shm_interface.name, name);
 
     if(!strcmp(interface, wl_shm_interface.name)) {
-	//shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
+	shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
+        DASSERT(shm);
+        if(!shm) {
+            ERROR("wl_registry_bind(,,) for shm failed");
+            handle_global_error = 1;
+        }
     } else if(!strcmp(interface, wl_seat_interface.name)) {
         // I'm guessing we can only get one wayland seat.
         DASSERT(wl_seat == 0);
         wl_seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
         if(!wl_seat) {
             ERROR("wl_registry_bind(,,) for seat failed");
-            handle_global_error = 1;
+            handle_global_error = 2;
             return;
         }
 	if(wl_seat_add_listener(wl_seat, &seat_listener, NULL)) {
             ERROR("wl_seat_add_listener() failed");
-            handle_global_error = 2;
+            handle_global_error = 3;
         }
     } else if(!strcmp(interface, wl_compositor_interface.name)) {
-	//compositor = wl_registry_bind(registry, name,
-	//&wl_compositor_interface, 1);
+        compositor = wl_registry_bind(registry, name,
+                &wl_compositor_interface, 1);
+        if(!compositor) {
+            ERROR("wl_registry_bind(,,) for compositor failed");
+            handle_global_error = 4;
+        }
     } else if(!strcmp(interface, xdg_wm_base_interface.name)) {
-	//xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
-	//xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
+	xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
+        if(!xdg_wm_base) {
+            ERROR("wl_registry_bind(,,) for xdg_wm_base failed");
+            handle_global_error = 5;
+            return;
+        }
+	if(xdg_wm_base_add_listener(xdg_wm_base,
+                    &xdg_wm_base_listener, 0)) {
+            ERROR("xdg_wm_base_add_listener(,,) failed");
+            handle_global_error = 6;
+        }
     }
 }
+
 
 static void handle_global_remove(void *data, struct wl_registry *registry,
 		uint32_t name) {
@@ -143,6 +180,10 @@ static struct SlDisplay *firstDisplay = 0, *lastDisplay = 0;
 
 static inline void CleanupProcess(void) {
 
+    // Looks like libwayland-client.so nicely cleans up after itself; more
+    // than I can say than for Qt6 and GTK3 which shit in their beds.
+    // Odd Qt6 and GTK are already bloated, why not add cleanup to them?
+
     DASSERT(wl_display);
 
     if(wl_seat) {
@@ -153,6 +194,24 @@ static inline void CleanupProcess(void) {
         // cleans up after itself.  Life is good.
         wl_seat_release(wl_seat);
         wl_seat = 0;
+    }
+
+    if(shm) {
+        // Valgrind shows this to cleanup.
+        wl_shm_destroy(shm);
+        shm = 0;
+    }
+
+    if(compositor) {
+        // Valgrind shows this to cleanup.
+        wl_compositor_destroy(compositor);
+        compositor = 0;
+    }
+
+    if(xdg_wm_base) {
+        // Valgrind shows this to cleanup.
+        xdg_wm_base_destroy(xdg_wm_base);
+        xdg_wm_base = 0;
     }
 
     // valgrind shows this to cleanup something:
@@ -169,6 +228,55 @@ static inline void CleanupProcess(void) {
     wl_display = 0;
 }
 
+// Return true on error and false on success.
+//
+static inline bool CheckDisplay(void) {
+
+    if(wl_display)
+        // We got it already.
+        return false;
+
+    DASSERT(!displayCount);
+    wl_display = wl_display_connect(0);
+    if(!wl_display) {
+        ERROR("wl_display_connect() failed");
+        return true;
+    }
+    // I think that there is only one of these registry things per
+    // process too (like wl_display).  We do not need a copy of it
+    // after this call given that we are given it back to us in the
+    // listener callback functions.
+    wl_registry = wl_display_get_registry(wl_display);
+    if(!wl_registry) {
+        ERROR("wl_display_get_registry(%p) failed", wl_display);
+        return true;
+    }
+    if(wl_registry_add_listener(wl_registry, &registry_listener, 0)) {
+        ERROR("wl_registry_add_listener(%p, %p,) failed",
+                wl_registry, &registry_listener);
+        CleanupProcess();
+        return true;
+    }
+    handle_global_error = 0;
+
+    // I'm guessing this can block.
+    if(wl_display_roundtrip(wl_display) == -1 || handle_global_error) {
+        ERROR("wl_display_roundtrip(%p) failed handle_global_error=%"
+                PRIu32, wl_display, handle_global_error);
+        // TODO: I see no way to get an error value out of handle_global()
+        // so I added variable handle_global_error.
+        CleanupProcess();
+        return true;
+    }
+    if(!shm || !compositor || !xdg_wm_base) {
+	ERROR("no wl_shm, wl_compositor or xdg_wm_base support");
+        CleanupProcess();
+        return true;
+    }
+
+    return false; // success
+}
+
 
 struct SlDisplay *slDisplay_create(void) {
 
@@ -176,39 +284,8 @@ struct SlDisplay *slDisplay_create(void) {
 
     CHECK(pthread_mutex_lock(&mutex));
 
-    if(!wl_display) {
-        DASSERT(!displayCount);
-        wl_display = wl_display_connect(0);
-        if(!wl_display) {
-            ERROR("wl_display_connect() failed");
-            goto finish;
-        }
-        // I think that there is only one of these registry things per
-        // process too (like wl_display).  We do not need a copy of it
-        // after this call given that we are given it back to us in the
-        // listener callback functions.
-        wl_registry = wl_display_get_registry(wl_display);
-        if(!wl_registry) {
-            ERROR("wl_display_get_registry(%p) failed", wl_display);
-            goto finish;
-        }
-        if(wl_registry_add_listener(wl_registry, &registry_listener, 0)) {
-            ERROR("wl_registry_add_listener(%p, %p,) failed",
-                    wl_registry, &registry_listener);
-            CleanupProcess();
-            goto finish;
-        }
-        handle_global_error = 0;
-        if(wl_display_roundtrip(wl_display) == -1 ||
-                handle_global_error) {
-            ERROR("wl_display_roundtrip(%p) failed handle_global_error=%"
-                    PRIu32, wl_display, handle_global_error);
-            // TODO: I see no way to get an error value out of handle_global()
-            // so I added variable handle_global_error.
-            CleanupProcess();
-            goto finish;
-	}
-    }
+    if(CheckDisplay())
+        goto finish;
 
     d = calloc(1, sizeof(*d));
     ASSERT(d, "calloc(1,%zu) failed", sizeof(*d));

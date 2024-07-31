@@ -20,6 +20,8 @@ struct SlDisplay {
     // List of slate windows owned by this display.
     struct SlWindow *firstWindow, *lastWindow;
 
+    bool done;
+
     pthread_mutex_t mutex; // protect this struct data
 };
 

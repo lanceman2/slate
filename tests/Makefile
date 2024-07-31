@@ -52,6 +52,10 @@ _061_window_noCleanup_LDFLAGS := $(SL_LIB)
 _066_showWindows_SOURCES := _066_showWindows.c
 _066_showWindows_LDFLAGS := $(SL_LIB)
 
+windowDraw_SOURCES := windowDraw.c
+windowDraw_LDFLAGS := $(SL_LIB)
+
+
 
 
 

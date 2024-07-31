@@ -43,7 +43,19 @@ static void noop(void) {
 static void xdg_toplevel_handle_close(struct SlWindow *win,
 		struct xdg_toplevel *xdg_toplevel) {
 
+    DSPEW();
     win->open = false;
+    // TODO: Looks like if any top level window gets here the "display" is
+    // done.  My testing on KDE plasma with wayland (2024 Jul 31), hit key
+    // press Alt-<F4> seems to be a destroy the "display connection"
+    // thingy and not just the particular window that was in focus for the
+    // Alt-<F4> event.  I note the if I do not destroy the display in time
+    // the process is terminated.  It may be kwin server signaling my
+    // program.  Seems like a race condition in the kwin server/client
+    // interaction/protocol.
+    //
+    win->display->done = true;
+    DSPEW();
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -223,7 +235,7 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
         goto fail;
     }
     if(xdg_toplevel_add_listener(win->xdg_toplevel,
-                &xdg_toplevel_listener, 0)) {
+                &xdg_toplevel_listener, win)) {
         ERROR("xdg_toplevel_add_listener(,,) failed");
         goto fail;
     }

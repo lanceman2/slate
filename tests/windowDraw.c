@@ -27,12 +27,11 @@ int main(void) {
 
     ERROR("w[0]=%p", w[0]);
 
-    while(slDisplay_dispatch(d)) {
-
-
-    }
+    while(slDisplay_dispatch(d));
 
     // TODO: Not calling this fast enough will cause a crash, WTF.
+    // That is if there was a Alt-<F4> with window in focus; at
+    // least on KDE plasma kwin wayland shit.
     slDisplay_destroy(d);
 
 

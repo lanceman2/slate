@@ -39,6 +39,7 @@ struct wl_display *wl_display = 0;
 static struct wl_registry *wl_registry = 0;
 static struct wl_seat *wl_seat = 0;
 static struct wl_pointer *pointer = 0;
+static struct wl_keyboard *kb = 0;
 
 static uint32_t handle_global_error;
 
@@ -99,17 +100,69 @@ static const struct wl_pointer_listener pointer_listener = {
     .axis = axis
 };
 
+static void kb_map(void* data, struct wl_keyboard* kb,
+        uint32_t frmt, int32_t fd, uint32_t sz) {
+    DSPEW();
+}
+
+static void kb_enter(void* data, struct wl_keyboard* kb,
+        uint32_t ser, struct wl_surface* srfc,
+        struct wl_array* keys) {
+    DSPEW();
+}
+
+static void kb_leave(void* data, struct wl_keyboard* kb,
+        uint32_t ser, struct wl_surface* srfc) {
+    DSPEW();
+}
+
+static void kb_key(void* data, struct wl_keyboard* kb,
+        uint32_t ser, uint32_t t, uint32_t key,
+        uint32_t stat) {
+
+    DSPEW("key=%" PRIu32, key);
+}
+
+static void kb_mod(void* data, struct wl_keyboard* kb,
+        uint32_t ser, uint32_t dep, uint32_t lat,
+        uint32_t lock, uint32_t grp) {
+    DSPEW();
+}
+
+static void kb_repeat(void* data, struct wl_keyboard* kb,
+        int32_t rate, int32_t del) {
+    DSPEW();
+}
+
+static struct wl_keyboard_listener kb_listener = {
+    .keymap = kb_map,
+    .enter = kb_enter,
+    .leave = kb_leave,
+    .key = kb_key,
+    .modifiers = kb_mod,
+    .repeat_info = kb_repeat
+};
+
+
 static void seat_handle_capabilities(void *data, struct wl_seat *seat,
 		uint32_t capabilities) {
     // If the wl_seat has the pointer capability, start listening to pointer
     // events
     DASSERT(seat == wl_seat);
     DASSERT(!pointer);
+    DASSERT(!kb);
     DASSERT(capabilities & WL_SEAT_CAPABILITY_POINTER);
 
     if(capabilities & WL_SEAT_CAPABILITY_POINTER) {
         pointer = wl_seat_get_pointer(seat);
+        DASSERT(pointer);
 	wl_pointer_add_listener(pointer, &pointer_listener, seat);
+    }
+
+    if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD && !kb) {
+	kb = wl_seat_get_keyboard(seat);
+        DASSERT(kb);
+	wl_keyboard_add_listener(kb, &kb_listener, 0);
     }
 }
 
@@ -191,6 +244,13 @@ static inline void CleanupProcess(void) {
     // Odd Qt6 and GTK are already bloated, why not add cleanup to them?
 
     DASSERT(wl_display);
+
+    if(kb) {
+        DASSERT(wl_seat);
+        // We leak memory if we don't call this.
+        wl_keyboard_release(kb);
+        kb = 0;
+    }
 
     if(pointer) {
         DASSERT(wl_seat);

@@ -34,10 +34,12 @@ struct xdg_wm_base *xdg_wm_base = 0;
 // code; I know I do.
 
 // returned from wl_display_connect().
-static struct wl_display  *wl_display = 0;
+struct wl_display *wl_display = 0;
 
 static struct wl_registry *wl_registry = 0;
-static struct wl_seat     *wl_seat = 0;
+static struct wl_seat *wl_seat = 0;
+static struct wl_pointer *pointer = 0;
+
 static uint32_t handle_global_error;
 
 
@@ -101,8 +103,12 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
 		uint32_t capabilities) {
     // If the wl_seat has the pointer capability, start listening to pointer
     // events
+    DASSERT(seat == wl_seat);
+    DASSERT(!pointer);
+    DASSERT(capabilities & WL_SEAT_CAPABILITY_POINTER);
+
     if(capabilities & WL_SEAT_CAPABILITY_POINTER) {
-        struct wl_pointer *pointer = wl_seat_get_pointer(seat);
+        pointer = wl_seat_get_pointer(seat);
 	wl_pointer_add_listener(pointer, &pointer_listener, seat);
     }
 }
@@ -185,6 +191,13 @@ static inline void CleanupProcess(void) {
     // Odd Qt6 and GTK are already bloated, why not add cleanup to them?
 
     DASSERT(wl_display);
+
+    if(pointer) {
+        DASSERT(wl_seat);
+        // We leak memory if we don't call this.
+        wl_pointer_release(pointer);
+        pointer = 0;
+    }
 
     if(wl_seat) {
         // cleanup seat

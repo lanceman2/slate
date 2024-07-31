@@ -40,7 +40,8 @@ libslate.so_SOURCES :=\
  xdg-shell-protocol.c\
  debug.c\
  display.c\
- window.c
+ window.c\
+ shm.c
 libslate.so_CPPFLAGS := $(WL_CFLAGS)
 libslate.so_CFLAGS :=\
  -fvisibility=hidden\

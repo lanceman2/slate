@@ -32,28 +32,11 @@ int main(void) {
 
     }
 
+    // TODO: Not calling this fast enough will cause a crash, WTF.
     slDisplay_destroy(d);
 
 
-    DSPEW("DONE1");
-
-
-    d = slDisplay_create();
-
-    for(int i=0; i<NUM_WINS; ++i)
-        w[i] = slWindow_createTop(d, 100, 100, i*100, 10);
-
-    while(slDisplay_dispatch(d)) {
-
-
-    }
-
-    ASSERT(0);
-
-    slDisplay_destroy(d);
-
-    DSPEW("DONE2");
-
+    DSPEW("DONE");
 
 
     return 0;

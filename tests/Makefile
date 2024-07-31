@@ -49,6 +49,10 @@ _060_window_CPPFLAGS := -DCLEANUP
 _061_window_noCleanup_SOURCES := _060_window.c
 _061_window_noCleanup_LDFLAGS := $(SL_LIB)
 
+_066_showWindows_SOURCES := _066_showWindows.c
+_066_showWindows_LDFLAGS := $(SL_LIB)
+
+
 
 
 include ../quickbuild.make

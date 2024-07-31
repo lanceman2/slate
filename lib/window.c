@@ -63,11 +63,9 @@ void _slWindow_destroy(struct SlDisplay *d,
     // Cleanup wayland stuff for this window:
 
     // Cleanup in reverse order of construction.
-    
-    if(win->buffer) {
+
+    if(win->buffer)
         wl_buffer_destroy(win->buffer);
-        win->buffer = 0;
-    }
 
     if(win->xdg_toplevel)
         xdg_toplevel_destroy(win->xdg_toplevel);
@@ -79,10 +77,7 @@ void _slWindow_destroy(struct SlDisplay *d,
         wl_surface_destroy(win->wl_surface);
 
 
-
-
-
-    // Remove win from the display windows list:
+    // Remove win from the slate display slate windows list:
     if(win->next) {
         DASSERT(win != d->lastWindow);
         win->next->prev = win->prev;
@@ -150,7 +145,7 @@ static bool create_buffer(struct SlWindow *win) {
     // need to keep file descriptor opened
     close(fd);
 
-    memset(shm_data, 0, size);
+    memset(shm_data, 200, size);
 
     win->shm_data = shm_data;
     win->buffer = buffer;
@@ -244,6 +239,10 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
 
     if(create_buffer(win))
         goto fail;
+
+    wl_surface_attach(win->wl_surface, win->buffer, 0, 0);
+    wl_surface_commit(win->wl_surface);
+
 
     // Success:
 

@@ -403,5 +403,8 @@ static void __attribute__((destructor)) destroy(void) {
 
 bool slDisplay_dispatch(struct SlDisplay *d) {
 
+    if(wl_display_dispatch(wl_display) != -1)
+        return true;
+
     return false;
 }

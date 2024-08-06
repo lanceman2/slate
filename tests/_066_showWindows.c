@@ -8,7 +8,7 @@ int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
 
-    const uint32_t NUM_WINS = 4;
+    const uint32_t NUM_WINS = 1;
 
     struct SlWindow *w[NUM_WINS];
 

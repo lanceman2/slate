@@ -18,6 +18,7 @@
 static void xdg_surface_handle_configure(struct SlWindow *win,
 	    struct xdg_surface *xdg_surface, uint32_t serial) {
 
+DSPEW();
     // The compositor configures our surface, acknowledge the configure
     // event
     xdg_surface_ack_configure(win->xdg_surface, serial);
@@ -32,10 +33,10 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
-	.configure = (void *) xdg_surface_handle_configure,
+    .configure = (void *) xdg_surface_handle_configure,
 };
 
-static void noop(void) {
+static void toplevel_configure(void) {
 
     DSPEW();
 }
@@ -55,11 +56,10 @@ static void xdg_toplevel_handle_close(struct SlWindow *win,
     // interaction/protocol.
     //
     win->display->done = true;
-    DSPEW();
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
-	.configure = (void *) noop,
+	.configure = (void *) toplevel_configure,
 	.close = (void *) xdg_toplevel_handle_close,
 };
 
@@ -118,7 +118,6 @@ static bool create_buffer(struct SlWindow *win) {
     int stride = win->width * 4;
     int size = stride * win->height;
 
-    // Allocate a shared memory file with the right size
     int fd = create_shm_file(size);
 
     if(fd < 0)
@@ -139,7 +138,6 @@ static bool create_buffer(struct SlWindow *win) {
         close(fd);
         return true;
     }
-
 
     struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0,
             win->width, win->height,

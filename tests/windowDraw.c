@@ -29,12 +29,12 @@ int main(void) {
 
     while(slDisplay_dispatch(d));
 
-    // TODO: Not calling this fast enough will cause a crash, WTF.
-    // That is if there was a Alt-<F4> with window in focus; at
-    // least on KDE plasma kwin wayland shit.
+    // TODO: Not calling this fast enough will cause a crash, WTF.  That
+    // is if there was a Alt-<F4> key press with window in focus; at least
+    // on KDE plasma kwin wayland compositor.
     slDisplay_destroy(d);
 
-
+    // If we make it here it does not seen to crash.
     DSPEW("DONE");
 
 

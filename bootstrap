@@ -9,14 +9,10 @@ qb_sha512sum=df58b143ab84d7f30dfae36c869226f6a6d3\
 299dd14193e4623cf23381ae5cf14aca7781adfee6a5ac9cc\
 99b1cc751cdd2974cda426647718ab9f669c35d652e
 
-debug_tag=52cd14fab044ea217e2dd3b4ebdc2faf63cd4fcb
+debug_tag=master
 debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/
-debug_c_sha512sum=6b85e9448641b2e2f34caef4a4323b3\
-57cb0c43fd3401c0955a9a29dd5210de0a0e08638dc5ddd4f\
-69bf67e871c132e38d24cd19aa608450a2b7dfe676df90b1
-debug_h_sha512sum=3ea899b49cd23959a6d265a05d9bdbc\
-1dc9d6a29822413ada99aa47df7bf746ff856f5fb6fc9c893\
-348370451fb27e14913340cd831828afdfe889edcdaefcaf
+debug_c_sha512sum=
+debug_h_sha512sum=
 
 
 set -ex

@@ -206,7 +206,8 @@ static void handle_global(void *data, struct wl_registry *registry,
             handle_global_error = 4;
         }
     } else if(!strcmp(interface, xdg_wm_base_interface.name)) {
-	xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
+	xdg_wm_base = wl_registry_bind(registry, name,
+                &xdg_wm_base_interface, 1);
         if(!xdg_wm_base) {
             ERROR("wl_registry_bind(,,) for xdg_wm_base failed");
             handle_global_error = 5;
@@ -221,9 +222,9 @@ static void handle_global(void *data, struct wl_registry *registry,
 }
 
 
-static void handle_global_remove(void *data, struct wl_registry *registry,
-		uint32_t name) {
-    // I care to see this.
+static void handle_global_remove(void *data,
+        struct wl_registry *registry, uint32_t name) {
+    // I care to see this.  Never seen it yet...
     ERROR("called for name=%" PRIu32, name);
 }
 
@@ -238,10 +239,6 @@ static struct SlDisplay *firstDisplay = 0, *lastDisplay = 0;
 
 
 static inline void CleanupProcess(void) {
-
-    // Looks like libwayland-client.so nicely cleans up after itself; more
-    // than I can say than for Qt6 and GTK3 which shit in their beds.
-    // Odd Qt6 and GTK are already bloated, why not add cleanup to them?
 
     DASSERT(wl_display);
 

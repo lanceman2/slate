@@ -58,7 +58,10 @@ dynamically load more libraries); see by running:
 ## Testing libwayland-client.so and libffi.so for system resource leaks
 
 
-
-
 We'll add that as a test program in ./tests
+
+
+On wayland sub-surfaces:
+https://ppaalanen.blogspot.com/2013/11/sub-surfaces-now.html
+
 

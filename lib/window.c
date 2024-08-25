@@ -320,7 +320,8 @@ struct wl_callback_listener frame_listener = {
 
 // TODO: There has got to be a better way:
 //
-// I'm a little lost here...
+// I'm a little lost here...  This is somewhat of a not so nice hack
+// function.  Maybe there is a better way to do this.
 //
 static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
 
@@ -348,7 +349,7 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
         // win->wl_surface, but alas they do not:
         uint32_t version = wl_proxy_get_version((struct wl_proxy *) win->wl_surface);
         //
-        // These two may be wrong:
+        // These two may be wrong (I leave here for the record):
         //uint32_t version = xdg_toplevel_get_version(win->xdg_toplevel);
         //uint32_t version = xdg_surface_get_version(win->xdg_surface);
 

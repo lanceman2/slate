@@ -58,7 +58,7 @@ static uint32_t displayCount = 0;
 static void xdg_wm_base_handle_ping(void *data,
 		struct xdg_wm_base *xdg_wm_base, uint32_t serial) {
 
-DSPEW("           PING");
+    DSPEW("PING");
     // The compositor will send us a ping event to check that we're
     // responsive.  We need to send back a pong request immediately.
     xdg_wm_base_pong(xdg_wm_base, serial);

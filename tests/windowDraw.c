@@ -18,7 +18,7 @@ static
 int draw(struct SlWindow *win, void *pixels, size_t size) {
 
 draw_count++;
-DSPEW("                                      draw_count=%d", draw_count);
+fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
 
     memset(pixels, color, size);

@@ -13,7 +13,8 @@ static bool running = true;
 int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
-    struct SlWindow *w = slWindow_createTop(d, 10, 10, 0, 0);
+    struct SlWindow *w = slWindow_createTop(d, 100, 100, 0, 0,
+            0/*draw()*/);
 
     ASSERT(w);
 

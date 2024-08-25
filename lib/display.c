@@ -57,8 +57,10 @@ static uint32_t displayCount = 0;
 
 static void xdg_wm_base_handle_ping(void *data,
 		struct xdg_wm_base *xdg_wm_base, uint32_t serial) {
-    // The compositor will send us a ping event to check that we're responsive.
-    // We need to send back a pong request immediately.
+
+DSPEW("           PING");
+    // The compositor will send us a ping event to check that we're
+    // responsive.  We need to send back a pong request immediately.
     xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
@@ -390,6 +392,8 @@ void slDisplay_destroy(struct SlDisplay *d) {
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
+    DSPEW();
+
     // Destroy all slate windows that are owned by this display (d).
     while(d->lastWindow) _slWindow_destroy(d, d->lastWindow);
 
@@ -441,7 +445,7 @@ static void __attribute__((constructor)) create(void) {
 #endif
 
 
-static void __attribute__((destructor)) destroy(void) {
+static void __attribute__((destructor)) destructor(void) {
 
     if(getenv("SLATE_NO_CLEANUP"))
         // TODO: I'm not sure if this is a good idea.
@@ -449,12 +453,15 @@ static void __attribute__((destructor)) destroy(void) {
         // work correctly.
         return;
 
-    DSPEW();
+    DSPEW("libslate.so cleaning up");
+
 
     // This will cleanup after a sloppy user of this API.
     // 
     while(lastDisplay)
         slDisplay_destroy(lastDisplay);
+
+    DSPEW("libslate.so done");
 }
 
 
@@ -463,8 +470,9 @@ bool slDisplay_dispatch(struct SlDisplay *d) {
     if(d->done)
         return false;
 
-    if(wl_display_dispatch(wl_display) != -1)
+    if(wl_display_dispatch(wl_display) != -1) {
         return true;
+    }
 
     return false;
 }

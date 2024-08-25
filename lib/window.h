@@ -12,6 +12,11 @@ struct SlWindow {
 
     struct wl_buffer *buffer;
 
+    struct wl_callback *wl_callback;
+
+    int (*draw)(struct SlWindow *, void *pixels, size_t size);
+
+    // This is where the shared memory pixels start:
     void *shm_data;
     
     bool configured, open;

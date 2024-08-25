@@ -40,7 +40,8 @@ static int anonymous_shm_open(void) {
 	--retries;
 	// shm_open guarantees that O_CLOEXEC is set
         errno = 0;
-	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
+	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL,
+                S_IWUSR | S_IRUSR | S_IWOTH | S_IROTH);
 	if(fd >= 0) {
 	    if(shm_unlink(name)) {
                 ERROR("shm_unlink(\"%s\") failed", name);

@@ -12,8 +12,11 @@ int main(void) {
 
     struct SlWindow *w[NUM_WINS];
 
-    for(int i=0; i<NUM_WINS; ++i)
-        w[i] = slWindow_createTop(d, 10, 10, i*10, 10);
+    for(int i=0; i<NUM_WINS; ++i) {
+        w[i] = slWindow_createTop(d, 10, 10, i*10, 10, 0);
+        if(!w[i])
+            return 1; // Fail
+    }
 
 #ifdef CLEANUP
     // This will get done in the libslate.so destructor any way, but

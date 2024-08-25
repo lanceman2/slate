@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /**
 \c SLATE_MAJOR is the major version number.
@@ -52,7 +53,8 @@ SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
 SL_EXPORT struct SlWindow *slWindow_createTop(struct SlDisplay *d,
-        uint32_t w, uint32_t h, int32_t x, int32_t y);
+        uint32_t w, uint32_t h, int32_t x, int32_t y,
+        int (*draw)(struct SlWindow *win, void *pixels, size_t size));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
 #ifdef __cplusplus

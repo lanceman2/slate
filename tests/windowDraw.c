@@ -1,15 +1,34 @@
 #include <stdbool.h>
 #include <signal.h>
+#include <string.h>
 
 #include "../include/slate.h"
 #include "../include/slate_debug.h"
 
-
+static
 void catcher(int sig) {
     ASSERT(0, "Caught signal %d", sig);
 }
 
+static int color = 100;
 
+static int draw_count = 0;
+
+static
+int draw(struct SlWindow *win, void *pixels, size_t size) {
+
+draw_count++;
+DSPEW("                                      draw_count=%d", draw_count);
+
+
+    memset(pixels, color, size);
+
+    color++;
+
+    //return 1; // stop calling
+
+    return 0; //continue to calling at every frame, like at 60 Hz.
+}
 
 int main(void) {
 
@@ -18,25 +37,17 @@ int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
 
-    const uint32_t NUM_WINS = 1;
+    slWindow_createTop(d, 100, 100, 100, 10, draw);
 
-    struct SlWindow *w[NUM_WINS];
-
-    for(int i=0; i<NUM_WINS; ++i)
-        w[i] = slWindow_createTop(d, 100, 100, i*100, 10);
-
-    ERROR("w[0]=%p", w[0]);
+    fprintf(stderr, "\n\nHIT <Alt-F4> to exit\n\n");
 
     while(slDisplay_dispatch(d));
 
-    // TODO: Not calling this fast enough will cause a crash, WTF.  That
-    // is if there was a Alt-<F4> key press with window in focus; at least
-    // on KDE plasma kwin wayland compositor.
-    slDisplay_destroy(d);
+
+    // Use automatic cleanup from the libslate.so destructor.
 
     // If we make it here it does not seen to crash.
     DSPEW("DONE");
-
 
     return 0;
 }

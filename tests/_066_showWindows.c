@@ -8,19 +8,17 @@ int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
 
-    const uint32_t NUM_WINS = 1;
+    const uint32_t NUM_WINS = 4;
 
     struct SlWindow *w[NUM_WINS];
 
     for(int i=0; i<NUM_WINS; ++i)
-        w[i] = slWindow_createTop(d, 100, 100, i*100, 10);
+        w[i] = slWindow_createTop(d, 100, 100, i*100, 10, 0);
 
     while(slDisplay_dispatch(d)) {
 
 
     }
-
-
 
 #ifdef CLEANUP
     // This will get done in the libslate.so destructor any way, but

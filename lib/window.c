@@ -15,21 +15,175 @@
 #include "shm.h"
 
 
+static bool AddFrameListener(struct SlWindow *win);
+
+static
+void (*surface_damage_func)(struct wl_surface *wl_surface,
+        int32_t x, int32_t y, int32_t width, int32_t height) = 0;
+
+
+static inline void PostDraw(struct SlWindow *win) {
+
+    struct wl_surface *wl_surface = win->wl_surface;
+
+    wl_surface_attach(wl_surface, win->buffer, 0, 0);
+
+    // For newer version
+    // wl_surface_damage_buffer(wl_surface, 0, 0, INT32_MAX, INT32_MAX);
+    //
+    // For older wayland client version 1
+    // wl_surface_damage(wl_surface, 0, 0, INT32_MAX, INT32_MAX);
+    //
+    surface_damage_func(wl_surface, 0, 0, INT32_MAX, INT32_MAX);
+
+    wl_surface_commit(wl_surface);
+}
+
+
+static inline void Draw(struct SlWindow *win) {
+
+    DASSERT(win);
+    DASSERT(win->draw);
+    DASSERT(win->wl_surface);
+    DASSERT(win->buffer);
+    DASSERT(win->width);
+    DASSERT(win->height);
+
+    // Call the libslate.so users draw callback.  This draw() function
+    // can set the win->shm_data pixel value to what ever it wants to.
+    // These values will not be seen until the compositor process
+    // decides to read these pixels from the shared memory.  In this
+    // process the shared memory is at virtual address win->shm_data.
+    //
+    if(!win->draw(win, win->shm_data, (win->width)*(win->height)*4))
+        // We will continue to call this draw in this frame thingy
+        // when the time for the next frame happens.
+        AddFrameListener(win);
+
+DSPEW("                       Draw() DONE");
+}
+
+
+// This does nothing if there is no buffer stuff yet.
+//
+static inline void free_buffer(struct SlWindow *win) {
+
+    DASSERT(win);
+
+    if(win->buffer) {
+        wl_buffer_destroy(win->buffer);
+        win->buffer = 0;
+    }
+
+    if(win->shm_data) {
+        DASSERT(win->width);
+        DASSERT(win->height);
+        // TODO: Is it (shared memory size) always w*h*((4))??
+        if(munmap(win->shm_data, win->width*win->height*4)) {
+            ERROR("munmap(%p,%d) failed", win->shm_data,
+                    win->width*win->height*4);
+            // TODO: What can we do about this failure???
+            DASSERT(0, "munmap(%p,%d) failed", win->shm_data,
+                    win->width*win->height*4);
+        }
+        win->shm_data = 0;
+    }
+}
+
+
+static inline bool create_buffer(struct SlWindow *win) {
+
+    DASSERT(win);
+    DASSERT(win->width > 0);
+    DASSERT(win->height > 0);
+
+    // This does nothing if there is no buffer stuff yet.
+    free_buffer(win);
+
+    DASSERT(!win->shm_data);
+    DASSERT(!win->buffer);
+
+
+    int stride = win->width * 4;
+    size_t size = stride * win->height;
+
+    int fd = create_shm_file(size);
+
+    if(fd < 0)
+        // create_shm_file() should have spewed already.
+	return true;
+
+    // Map the (pixels) shared memory file to this processes virtual
+    // address space.
+    win->shm_data = mmap(0, size,
+            PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    if(win->shm_data == MAP_FAILED) {
+        ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
+                "MAP_SHARED,fd=%d,0) failed", size, fd);
+	close(fd);
+	return true;
+    }
+
+    // Create a wl_buffer from our shared memory file descriptor.
+    //
+    // Here we pass the file descriptor to the compositor process (or at
+    // least get ready to pass it) via a UNIX domain socket.  The
+    // compositor process should take care of removing (via unlink(2)) the
+    // file after the inter-process shared pixels memory is mapped in the
+    // compositor process.
+    struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
+    if(!pool) {
+        ERROR("wl_shm_create_pool() failed");
+        // TODO: What if this fails?:
+        ASSERT(munmap(win->shm_data, size) == 0);
+        close(fd);
+        return true;
+    }
+
+    win->buffer = wl_shm_pool_create_buffer(pool, 0,
+            win->width, win->height,
+            stride, WL_SHM_FORMAT_ARGB8888);
+    if(!win->buffer) {
+        ERROR("wl_shm_pool_create_buffer() failed");
+        wl_shm_pool_destroy(pool);
+        // TODO: What if this fails?:
+        ASSERT(munmap(win->shm_data, size) == 0);
+        close(fd);
+        return true;
+    }
+
+    // We have what we needed.  Inter-process shared memory at process
+    // virtual address win->shm_data.
+    wl_shm_pool_destroy(pool);
+
+    // Now that we've mapped the file and created the wl_buffer, we no
+    // longer need to keep file descriptor opened.
+    close(fd);
+
+    // Start with a some known value for the pixel memory.  The value of
+    // all zeros is not visible on my screen.
+    memset(win->shm_data, 250, size);
+
+    return false;
+}
+
+static int frame_count = 0;
+
+
 static void xdg_surface_handle_configure(struct SlWindow *win,
 	    struct xdg_surface *xdg_surface, uint32_t serial) {
+
+    DASSERT(win);
+
+frame_count = 0;
 
 DSPEW();
     // The compositor configures our surface, acknowledge the configure
     // event
     xdg_surface_ack_configure(win->xdg_surface, serial);
 
-    if(win->configured)
-        // If this isn't the first configure event we've received, we
-        // already have a buffer attached, so no need to do anything.
-        // Commit the surface to apply the configure acknowledgement.
-	wl_surface_commit(win->wl_surface);
-
-    win->configured = true;
+    if(!win->configured)
+        win->configured = true;
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -64,6 +218,7 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 };
 
 
+
 void _slWindow_destroy(struct SlDisplay *d,
         struct SlWindow *win) {
 
@@ -71,13 +226,16 @@ void _slWindow_destroy(struct SlDisplay *d,
     DASSERT(win);
     DASSERT(win->display == d);
 
-
     // Cleanup wayland stuff for this window:
 
     // Cleanup in reverse order of construction.
 
-    if(win->buffer)
-        wl_buffer_destroy(win->buffer);
+    free_buffer(win);
+
+    if(win->wl_callback) {
+        DASSERT(win->draw);
+        wl_callback_destroy(win->wl_callback);
+    }
 
     if(win->xdg_toplevel)
         xdg_toplevel_destroy(win->xdg_toplevel);
@@ -105,66 +263,77 @@ void _slWindow_destroy(struct SlDisplay *d,
         d->firstWindow = win->next;
     }
 
-    DZMEM(win, sizeof(*win));
+    memset(win, 0, sizeof(*win));
     free(win);
 }
 
 
-static bool create_buffer(struct SlWindow *win) {
 
+static struct wl_callback_listener frame_listener;
+
+
+static bool AddFrameListener(struct SlWindow *win) {
+
+    DASSERT(win);
+    DASSERT(!win->wl_callback);
+    DASSERT(win->draw);
+
+    win->wl_callback = wl_surface_frame(win->wl_surface);
+    if(!win->wl_callback) {
+        ERROR("wl_surface_frame() failed");
+        return true; // failure
+    }
+    if(wl_callback_add_listener(win->wl_callback,
+                    &frame_listener, win)) {
+        ERROR("wl_callback_add_listener() failed");
+        wl_callback_destroy(win->wl_callback);
+        win->wl_callback = 0;
+        return true; // failure
+    }
+
+DSPEW("                                  -------");
+
+    return false; // return false == success
+}
+
+
+static void frame_new(struct SlWindow *win,
+        struct wl_callback* cb, uint32_t a) {\
+
+frame_count++;
+
+DSPEW("                       frame_new() START (%d)", frame_count);
+    DASSERT(win);
+    DASSERT(win->draw);
+    DASSERT(win->wl_surface);
+    DASSERT(cb);
+    DASSERT(cb == win->wl_callback);
     DASSERT(win->width > 0);
     DASSERT(win->height > 0);
 
-    int stride = win->width * 4;
-    int size = stride * win->height;
+    // Why is this not automatic?  It seems this must be done every call
+    // to the wl_callback (this function); so why is this not automatic?
+    wl_callback_destroy(cb);
+    // This keeps this code consistent.  Mark that we used the wl_callback
+    // and so it's done for this for this time.
+    win->wl_callback = 0;
 
-    int fd = create_shm_file(size);
+    Draw(win);
+    PostDraw(win);
 
-    if(fd < 0)
-	return true;
-
-    // Map the shared memory file
-    void *shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if(shm_data == MAP_FAILED) {
-        ERROR("mmap() failed");
-	close(fd);
-	return true;
-    }
-
-    // Create a wl_buffer from our shared memory file descriptor
-    struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
-    if(!pool) {
-        ERROR("wl_shm_create_pool() failed");
-        close(fd);
-        return true;
-    }
-
-    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0,
-            win->width, win->height,
-            stride, WL_SHM_FORMAT_ARGB8888);
-    if(!pool) {
-        ERROR("wl_shm_pool_create_buffer() failed");
-        wl_shm_pool_destroy(pool);
-        close(fd);
-        return true;
-    }
-
-    wl_shm_pool_destroy(pool);
-
-    // Now that we've mapped the file and created the wl_buffer, we no longer
-    // need to keep file descriptor opened
-    close(fd);
-
-    memset(shm_data, 200, size);
-
-    win->shm_data = shm_data;
-    win->buffer = buffer;
-
-    return false;
+DSPEW("                       frame_new() DONE");
 }
 
+static
+struct wl_callback_listener frame_listener = {
+    .done = (void (*)(void* data, struct wl_callback* cb, uint32_t a))
+        frame_new
+};
+
+
 struct SlWindow *slWindow_createTop(struct SlDisplay *d,
-        uint32_t w, uint32_t h, int32_t x, int32_t y) {
+        uint32_t w, uint32_t h, int32_t x, int32_t y,
+        int (*draw)(struct SlWindow *, void *pixels, size_t size)) {
 
     ASSERT(d);
 
@@ -173,6 +342,8 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
     // to the user to make the construction and destruction of the display
     // thread-safe.
     DASSERT(wl_display);
+    // shm, compositor, and xdg_wm_base are a process singlet global
+    // structures.  We keep them in the SlDisplay code (display.c).
     DASSERT(shm);
     DASSERT(compositor);
     DASSERT(xdg_wm_base);
@@ -182,6 +353,8 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
 
     win->width = w;
     win->height = h;
+    win->display = d;
+    win->draw = draw;
 
     // TODO:
     // Lets not code for funny width and heights yet. Uncommon values
@@ -204,8 +377,6 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
     }
     d->lastWindow = win;
 
-    win->display = d;
-
     // Wayland window stuff:
 
     win->wl_surface = wl_compositor_create_surface(compositor);
@@ -216,6 +387,7 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
 
     win->xdg_surface = xdg_wm_base_get_xdg_surface(
             xdg_wm_base, win->wl_surface);
+
     if(!win->xdg_surface) {
         ERROR("xdg_wm_base_get_xdg_surface() failed");
         goto fail;
@@ -225,6 +397,30 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
     if(!win->xdg_toplevel) {
         ERROR("xdg_surface_get_toplevel() failed");
         goto fail;
+    }
+
+    if(!surface_damage_func) {
+        // WTF: Why do they change the names of functions in an API, and
+        // still keep both accessible even when one is broken.
+        //
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// FIX THIS FUCKING CODE HERE
+        ///FIX THIS 
+        //
+        // TODO: This is not calling the correct function needed to see
+        // what surface_damage_func should be set to.
+        //
+        uint32_t version = xdg_toplevel_get_version(win->xdg_toplevel);
+
+        DSPEW("                        version=%" PRIu32, version);
+        switch(version) {
+            case 1:
+                // Older version:
+                surface_damage_func = wl_surface_damage;
+                break;
+            default:
+                // newer version:
+                surface_damage_func = wl_surface_damage_buffer;
+        }
     }
 
     if(xdg_surface_add_listener(win->xdg_surface,
@@ -238,7 +434,11 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
         goto fail;
     }
 
-    // Perform the initial commit and wait for the first configure event
+    // Perform the initial commit and wait for the first configure event.
+    //
+    // Removing this hangs the process.  This seems to prime the pump.
+    // I don't understand why this is called so much.
+    //
     wl_surface_commit(win->wl_surface);
 
     while(!win->configured)
@@ -250,9 +450,16 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
     if(create_buffer(win))
         goto fail;
 
-    wl_surface_attach(win->wl_surface, win->buffer, 0, 0);
-    wl_surface_commit(win->wl_surface);
+    DASSERT(win->buffer);
+    DASSERT(win->wl_surface);
+    DASSERT(win->shm_data);
+    DASSERT(!win->wl_callback);
 
+    if(draw)
+        // Call callback in Draw().
+        Draw(win);
+
+    PostDraw(win);
 
     // Success:
 

@@ -12,26 +12,23 @@ int main(void) {
 
     struct SlWindow *w[NUM_WINS];
 
-    for(int i=0; i<NUM_WINS; ++i)
+    for(int i=0; i<NUM_WINS; ++i) {
         w[i] = slWindow_createTop(d, 100, 100, i*100, 10, 0);
-
-    while(slDisplay_dispatch(d)) {
-
-
+        if(!w[i]) return 1; // error fail
     }
+
+    fprintf(stderr, "\nType <alt-F4> to exit\n\n");
+
+    while(slDisplay_dispatch(d));
 
 #ifdef CLEANUP
     // This will get done in the libslate.so destructor any way, but
     // we still test for this slWindow_destroy() here.
     for(int i=0; i<NUM_WINS; ++i)
         slWindow_destroy(w[i]);
-#else
+#endif
     // Let the libslate.so destructor cleanup the display and windows
     // if CLEANUP is not defined. 
-
-    // Fix -Werror=unused-but-set-variable
-    fprintf(stderr, "w=%p\n", w);
-#endif
 
     return 0;
 }

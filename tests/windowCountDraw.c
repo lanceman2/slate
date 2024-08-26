@@ -18,8 +18,8 @@ static
 int draw(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
-draw_count++;
-fprintf(stderr, "               draw_count=%d    \r", draw_count);
+    draw_count++;
+    fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
     memset(pixels, color, 4*w*h);
 

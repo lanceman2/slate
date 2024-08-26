@@ -26,7 +26,8 @@ fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
     color++;
 
-    //return 1; // stop calling
+    if(draw_count >= 200)
+        return 1; // stop calling
 
     return 0; //continue to calling at every frame, like at 60 Hz.
 }

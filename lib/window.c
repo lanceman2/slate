@@ -55,7 +55,8 @@ static inline void Draw(struct SlWindow *win) {
     // decides to read these pixels from the shared memory.  In this
     // process the shared memory is at virtual address win->shm_data.
     //
-    if(!win->draw(win, win->shm_data, (win->width)*(win->height)*4))
+    if(!win->draw(win, win->shm_data, win->width, win->height,
+                win->width*4))
         // We will continue to call this draw in this frame thingy
         // when the time for the next frame happens.
         AddFrameListener(win);
@@ -347,7 +348,8 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
         // wl_proxy_get_version() would have used argument prototype const
         // struct wl_proxy * so we do not corrupt memory at
         // win->wl_surface, but alas they do not:
-        uint32_t version = wl_proxy_get_version((struct wl_proxy *) win->wl_surface);
+        uint32_t version = wl_proxy_get_version(
+                (struct wl_proxy *) win->wl_surface);
         //
         // These two may be wrong (I leave here for the record):
         //uint32_t version = xdg_toplevel_get_version(win->xdg_toplevel);
@@ -355,7 +357,7 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
 
         switch(version) {
             case 1:
-                // Older version (deprecated, see:
+                // Older deprecated version (see:
                 // https://wayland-book.com/surfaces-in-depth/damaging-surfaces.html)
                 DSPEW("Using deprecated function wl_surface_damage() version=%"
                         PRIu32, version);
@@ -376,7 +378,8 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
 
 struct SlWindow *slWindow_createTop(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *, void *pixels, size_t size)) {
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride)) {
 
     ASSERT(d);
 
@@ -492,6 +495,25 @@ fail:
     _slWindow_destroy(d, win);
     CHECK(pthread_mutex_unlock(&d->mutex));
     return 0; // failure.
+}
+
+
+// TODO: Thread safety?
+//
+void slWindow_setDraw(struct SlWindow *win,
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride)) {
+    DASSERT(win);
+    DASSERT(win->wl_surface);
+    DASSERT(win->display);
+    DASSERT(win->configured);
+
+    win->draw = draw;
+
+    if(!win->wl_callback) {
+        Draw(win);
+        PostDraw(win);
+    }
 }
 
 

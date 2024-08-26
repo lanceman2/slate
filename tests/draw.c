@@ -10,6 +10,7 @@ void catcher(int sig) {
     ASSERT(0, "Caught signal %d", sig);
 }
 
+
 static int color = 100;
 
 static int draw_count = 0;
@@ -21,7 +22,7 @@ int draw(struct SlWindow *win, void *pixels,
 draw_count++;
 fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
-    memset(pixels, color, 4*w*h);
+    memset(pixels, color, w*h*4);
 
     color++;
 
@@ -32,6 +33,7 @@ fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
 int main(void) {
 
+    // We need to know this does not change, so that we know how to draw.
     ASSERT(SLATE_PIXEL_SIZE == 4);
 
     ASSERT(signal(SIGSEGV, catcher) != SIG_ERR);
@@ -40,10 +42,12 @@ int main(void) {
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    if(!slWindow_createTop(d, 100, 100, 100, 10, draw))
-        return 1; // fail
+    struct SlWindow *win = slWindow_createTop(d, 100, 100, 100, 10, 0/*draw()*/);
+    if(!win) return 1; // fail
 
-    fprintf(stderr, "\n\nHIT <Alt-F4> to exit\n\n");
+    fprintf(stderr, "\n\nKey Press <Alt-F4> to exit\n\n");
+
+    slWindow_setDraw(win, draw);
 
     while(slDisplay_dispatch(d));
 

@@ -55,5 +55,8 @@ _066_showWindows_LDFLAGS := $(SL_LIB)
 windowCountDraw_SOURCES := windowCountDraw.c
 windowCountDraw_LDFLAGS := $(SL_LIB)
 
+draw_SOURCES := draw.c
+draw_LDFLAGS := $(SL_LIB)
+
 
 include ../quickbuild.make

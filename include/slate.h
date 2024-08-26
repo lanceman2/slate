@@ -31,9 +31,9 @@ as we define it from the \c SLATE_MAJOR, \c SLATE_MINOR, and \c SLATE_EDIT.
 #define SLATE_VERSION  (SLATE_STR(SLATE_MAJOR) "." \
         SLATE_STR(SLATE_MINOR) "." SLATE_STR(SLATE_EDIT))
 
-// This file may get installed in the "system" so we do not polute the CPP
-// (C pre-processor) namespace by defining EXPORT, instead we define
-// SL_EXPORT
+// This file may get installed in the "system" (or where ever installer
+// decides) so we do not polute the CPP (C pre-processor) namespace by
+// defining EXPORT, instead we define SL_EXPORT
 #ifndef SL_EXPORT
 #  define SL_EXPORT extern
 #endif
@@ -46,6 +46,8 @@ extern "C" {
 struct SlDisplay;
 struct SlWindow;
 
+#define SLATE_PIXEL_SIZE   (4)
+
 
 // The function symbols that the libslate.so library provides:
 SL_EXPORT struct SlDisplay *slDisplay_create(void);
@@ -54,7 +56,11 @@ SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
 SL_EXPORT struct SlWindow *slWindow_createTop(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *win, void *pixels, size_t size));
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride));
+SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
 #ifdef __cplusplus

@@ -43,7 +43,7 @@ int main(void) {
     if(!slWindow_createTop(d, 100, 100, 100, 10, draw))
         return 1; // fail
 
-    fprintf(stderr, "\n\nHIT <Alt-F4> to exit\n\n");
+    fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
 
     while(slDisplay_dispatch(d));
 

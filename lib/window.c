@@ -56,7 +56,7 @@ static inline void Draw(struct SlWindow *win) {
     // process the shared memory is at virtual address win->shm_data.
     //
     if(!win->draw(win, win->shm_data, win->width, win->height,
-                win->width*4))
+                win->width*4/*stride in bytes*/))
         // We will continue to call this draw in this frame thingy
         // when the time for the next frame happens.
         AddFrameListener(win);

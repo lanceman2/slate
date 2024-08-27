@@ -19,10 +19,40 @@ static
 int draw(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
-draw_count++;
-fprintf(stderr, "               draw_count=%d    \r", draw_count);
+    // Line stride (increment, pitch or step size) is the number of bytes
+    // that one needs to add to the address in the first pixel of a row in
+    // order to go to the address of the first pixel of the next row.
+    draw_count++;
+    fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
-    memset(pixels, color, w*h*4);
+    // Each pixel it 4 bytes or the sizeof(uint32_t) = 4 bytes.
+    uint32_t *pix = pixels;
+    // linePad is the distance in pixels to the end of a x row
+    // from the last pixel drawn.  linePad is likely zero.
+    // Note: stride >= w * 4 (width*4).
+    const uint32_t linePad = stride/4 - w;
+    for(uint32_t y=0; y<h; y++) {
+        for(uint32_t x=0; x<w; ++x) {
+
+            // ARGB color pix is
+            // like 0x0AFF0022 is alpha=0A red=FF green=00 blue=22
+
+            if(x > 400)
+                *pix = 0x0AFF0000;
+            else if(x > 220) 
+                *pix = 0x0A0000FF;
+            else
+                *pix = 0x0A00FF00;
+
+            // Go to next pixel.
+            pix++;
+        }
+        // Go to next line.
+        pix += linePad;
+    }
+    
+
+    //memset(pixels, color, w*h*4);
 
     color++;
 
@@ -43,10 +73,10 @@ int main(void) {
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    struct SlWindow *win = slWindow_createTop(d, 100, 100, 100, 10, 0/*draw()*/);
+    struct SlWindow *win = slWindow_createTop(d, 600, 600, 100, 10, 0/*draw()*/);
     if(!win) return 1; // fail
 
-    fprintf(stderr, "\n\nKey Press <Alt-F4> to exit\n\n");
+    fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
 
     slWindow_setDraw(win, draw);
 

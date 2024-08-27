@@ -41,6 +41,7 @@ libslate.so_SOURCES :=\
  debug.c\
  display.c\
  window.c\
+ popup.c\
  shm.c
 libslate.so_CPPFLAGS := $(WL_CFLAGS)
 libslate.so_CFLAGS :=\

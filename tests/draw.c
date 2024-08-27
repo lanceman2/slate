@@ -28,13 +28,13 @@ int draw(struct SlWindow *win, void *pixels,
     // Each pixel it 4 bytes or the sizeof(uint32_t) = 4 bytes.
     uint32_t *pix = pixels;
     // linePad is the distance in pixels to the end of a x row
-    // from the last pixel drawn.  linePad is likely zero.
+    // from the last pixel drawn.  linePad is likely 0.
     // Note: stride >= w * 4 (width*4).
     const uint32_t linePad = stride/4 - w;
     for(uint32_t y=0; y<h; y++) {
         for(uint32_t x=0; x<w; ++x) {
 
-            // ARGB color pix is
+            // ARGB color pix is for example
             // like 0x0AFF0022 is alpha=0A red=FF green=00 blue=22
 
             if(x > 400)

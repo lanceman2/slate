@@ -394,8 +394,12 @@ void slDisplay_destroy(struct SlDisplay *d) {
 
     DSPEW();
 
-    // Destroy all slate windows that are owned by this display (d).
-    while(d->lastWindow) _slWindow_destroy(d, d->lastWindow);
+    // Destroy all slate toplevel windows that are owned by this display (d).
+    while(d->lastToplevel) {
+        DASSERT(d->lastToplevel->window.type == SlWindowType_topLevel);
+        DASSERT(d->lastToplevel->window.parent == 0);
+        _slWindow_destroy(d, &d->lastToplevel->window);
+    }
 
     CHECK(pthread_mutex_unlock(&d->mutex));
 

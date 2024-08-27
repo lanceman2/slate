@@ -17,8 +17,8 @@ struct SlDisplay {
     // We keep a list of displays in display.c.
     struct SlDisplay *prev, *next;
 
-    // List of slate windows owned by this display.
-    struct SlWindow *firstWindow, *lastWindow;
+    // List of slate toplevels owned by this display.
+    struct SlToplevel *firstToplevel, *lastToplevel;
 
     bool done;
 

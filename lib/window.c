@@ -189,11 +189,11 @@ static void toplevel_configure(void) {
     DSPEW();
 }
 
-static void xdg_toplevel_handle_close(struct SlWindow *win,
+static void xdg_toplevel_handle_close(struct SlToplevel *t,
 		struct xdg_toplevel *xdg_toplevel) {
 
     DSPEW();
-    win->open = false;
+    t->window.open = false;
     // TODO: Looks like if any top level window gets here the "display" is
     // done.  My testing on KDE plasma with wayland (2024 Jul 31), hit key
     // press Alt-<F4> seems to be a destroy the "display connection"
@@ -203,7 +203,7 @@ static void xdg_toplevel_handle_close(struct SlWindow *win,
     // program.  Seems like a race condition in the kwin server/client
     // interaction/protocol.
     //
-    win->display->done = true;
+    t->display->done = true;
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -212,13 +212,38 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 };
 
 
+static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
+
+    DASSERT(d);
+    DASSERT(d == t->display);
+    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(t->window.parent == 0);
+
+    // Remove t from the slate display slate toplevel windows list:
+    if(t->next) {
+        DASSERT(t != d->lastToplevel);
+        t->next->prev = t->prev;
+    } else {
+        DASSERT(t == d->lastToplevel);
+        d->lastToplevel = t->prev;
+    }
+    if(t->prev) {
+        DASSERT(t != d->firstToplevel);
+        t->prev->next = t->next;
+    } else {
+        DASSERT(t == d->firstToplevel);
+        d->firstToplevel = t->next;
+    }
+
+    memset(t, 0, sizeof(*t));
+    free(t);
+}
 
 void _slWindow_destroy(struct SlDisplay *d,
         struct SlWindow *win) {
 
     DASSERT(d);
     DASSERT(win);
-    DASSERT(win->display == d);
 
     // Cleanup wayland stuff for this window:
 
@@ -240,27 +265,16 @@ void _slWindow_destroy(struct SlDisplay *d,
     if(win->wl_surface)
         wl_surface_destroy(win->wl_surface);
 
+    switch(win->type) {
 
-    // Remove win from the slate display slate windows list:
-    if(win->next) {
-        DASSERT(win != d->lastWindow);
-        win->next->prev = win->prev;
-    } else {
-        DASSERT(win == d->lastWindow);
-        d->lastWindow = win->prev;
+        case SlWindowType_topLevel:
+            FreeToplevel(d, (void *) win);
+            break;
+        default:
+            ASSERT(0, "WRITE CODE to Free new window type %d",
+                    win->type);
     }
-    if(win->prev) {
-        DASSERT(win != d->firstWindow);
-        win->prev->next = win->next;
-    } else {
-        DASSERT(win == d->firstWindow);
-        d->firstWindow = win->next;
-    }
-
-    memset(win, 0, sizeof(*win));
-    free(win);
 }
-
 
 
 static struct wl_callback_listener frame_listener;
@@ -375,6 +389,27 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
     }
 }
 
+static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
+
+    DASSERT(d);
+    DASSERT(t->display = d);
+    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(t->window.parent == 0);
+
+    // Add t to the displays toplevel windows list:
+    if(d->lastToplevel) {
+        DASSERT(d->firstToplevel);
+        DASSERT(!d->lastToplevel->next);
+        DASSERT(!d->firstToplevel->prev);
+        d->lastToplevel->next = t;
+        t->prev = d->lastToplevel;
+    } else {
+        DASSERT(!d->firstToplevel);
+        d->firstToplevel = t;
+    }
+    d->lastToplevel = t;
+}
+
 
 struct SlWindow *slWindow_createTop(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
@@ -394,12 +429,15 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
     DASSERT(compositor);
     DASSERT(xdg_wm_base);
 
-    struct SlWindow *win = calloc(1, sizeof(*win));
-    ASSERT(win, "calloc(1,%zu) failed", sizeof(*win));
+    struct SlToplevel *t = calloc(1, sizeof(*t));
+    ASSERT(t, "calloc(1,%zu) failed", sizeof(*t));
 
+    struct SlWindow *win = &t->window;
+
+    t->display = d;
+    win->type = SlWindowType_topLevel;
     win->width = w;
     win->height = h;
-    win->display = d;
     win->draw = draw;
 
     // TODO:
@@ -410,18 +448,9 @@ struct SlWindow *slWindow_createTop(struct SlDisplay *d,
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
-    // Add win to the displays windows list:
-    if(d->lastWindow) {
-        DASSERT(d->firstWindow);
-        DASSERT(!d->lastWindow->next);
-        DASSERT(!d->firstWindow->prev);
-        d->lastWindow->next = win;
-        win->prev = d->lastWindow;
-    } else {
-        DASSERT(!d->firstWindow);
-        d->firstWindow = win;
-    }
-    d->lastWindow = win;
+    // Add win to the display's toplevel windows list:
+    AddToplevel(d, (void *) win);
+
 
     // Wayland window stuff:
 
@@ -505,8 +534,8 @@ void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride)) {
     DASSERT(win);
     DASSERT(win->wl_surface);
-    DASSERT(win->display);
     DASSERT(win->configured);
+    DASSERT(win->type == SlWindowType_topLevel, "WRITE MORE CODE HERE");
 
     win->draw = draw;
 
@@ -519,7 +548,8 @@ void slWindow_setDraw(struct SlWindow *win,
 
 void slWindow_destroy(struct SlWindow *w) {
 
-    struct SlDisplay *d = w->display;
+    DASSERT(w->type == SlWindowType_topLevel, "WRITE MORE CODE");
+    struct SlDisplay *d = ((struct SlToplevel *) w)->display;
 
     CHECK(pthread_mutex_lock(&d->mutex));
     _slWindow_destroy(d, w);

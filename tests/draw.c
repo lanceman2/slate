@@ -73,7 +73,8 @@ int main(void) {
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    struct SlWindow *win = slWindow_createTop(d, 600, 600, 100, 10, 0/*draw()*/);
+    struct SlWindow *win = slWindow_createToplevel(d,
+            600, 600, 100, 10, 0/*draw()*/);
     if(!win) return 1; // fail
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
@@ -85,7 +86,7 @@ int main(void) {
 
     // Use automatic cleanup from the libslate.so destructor.
 
-    // If we make it here it does not seen to crash.
+    // If we make it here it does not seem to crash.
     DSPEW("DONE");
 
     return 0;

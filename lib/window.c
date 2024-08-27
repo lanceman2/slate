@@ -411,7 +411,7 @@ static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 }
 
 
-struct SlWindow *slWindow_createTop(struct SlDisplay *d,
+struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {

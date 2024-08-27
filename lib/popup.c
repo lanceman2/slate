@@ -26,3 +26,12 @@ void _slPopup_destroy(struct SlWindow *w, struct SlPopup *p) {
 
 }
 
+
+struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
+        uint32_t w, uint32_t h, int32_t x, int32_t y,
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride)) {
+
+
+    return 0;
+}

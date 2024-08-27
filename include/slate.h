@@ -54,7 +54,11 @@ SL_EXPORT struct SlDisplay *slDisplay_create(void);
 SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 
-SL_EXPORT struct SlWindow *slWindow_createTop(struct SlDisplay *d,
+SL_EXPORT struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
+        uint32_t w, uint32_t h, int32_t x, int32_t y,
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride));
+SL_EXPORT struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride));

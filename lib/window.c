@@ -251,7 +251,11 @@ static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 // TODO: It questionable whither of not we need to keep this list of
 // children in the toplevel window/surface thingy; it could be the wayland
 // client API (application programming interface) has an interface we can
-// use to access the toplevel's children.
+// use to access the toplevel's children and popup's parents.
+//
+// In any case, we know the parent/child relations by how our libslate.so
+// API was called, and we add just a little bit of state data to
+// libslate.so.
 //
 void AddChild(struct SlToplevel *t, struct SlWindow *win) {
 

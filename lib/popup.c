@@ -12,19 +12,20 @@
 #include "debug.h"
 #include "window.h"
 #include "display.h"
-#include "popup.h"
 #include "shm.h"
 
+// Popup windows (surfaces) get/have a pointer focus grab as part of the
+// wayland protocol.  Popups are special/temporary.
 
+// From: https://wayland-client-d.dpldocs.info/wayland.client.protocol.wl_shell_surface_set_popup.html
+//
+// DOC QUOTE: A popup surface is a transient surface with an added pointer
+// grab.
+//
+// DOC QUOTE: The x and y arguments specify the location of the upper left
+// corner of the surface relative to the upper left corner of the parent
+// surface, in surface-local coordinates.
 
-
-void _slPopup_destroy(struct SlWindow *w, struct SlPopup *p) {
-
-    DASSERT(w);
-    DASSERT(p);
-    DASSERT(w == p->parent);
-
-}
 
 
 struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
@@ -32,6 +33,36 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         int (*draw)(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
+    DASSERT(parent);
+    ASSERT(parent->type == SlWindowType_topLevel);
+    struct SlToplevel *t = (void *) parent;
+    struct SlDisplay *d = t->display;
+    DASSERT(d);
 
-    return 0;
+    struct SlPopup *p = calloc(1, sizeof(*p));
+    ASSERT(p, "calloc(1,%zu) failed", sizeof(*p));
+
+    struct SlWindow *win = &p->window;
+    p->parent = (void *) parent;
+    win->type = SlWindowType_popup;
+
+
+    CHECK(pthread_mutex_lock(&d->mutex));
+
+    // Start with the generic wayland surface stuff.
+    if(CreateWindow(d, win, w, h, x, y, draw))
+        goto fail;
+
+    AddChild(t, win);
+
+    // Success:
+
+    CHECK(pthread_mutex_unlock(&d->mutex));
+    return win;
+
+fail:
+
+    _slWindow_destroy(d, win);
+    CHECK(pthread_mutex_unlock(&d->mutex));
+    return 0; // failure.
 }

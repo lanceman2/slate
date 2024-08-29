@@ -59,4 +59,9 @@ draw_SOURCES := draw.c
 draw_LDFLAGS := $(SL_LIB)
 
 
+070_popup_SOURCES := 070_popup.c
+070_popup_LDFLAGS := $(SL_LIB)
+
+
+
 include ../quickbuild.make

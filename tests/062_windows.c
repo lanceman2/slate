@@ -7,6 +7,7 @@
 int main(void) {
 
     struct SlDisplay *d = slDisplay_create();
+    if(!d) return 1; // fail
 
     const uint32_t NUM_WINS = 10;
 

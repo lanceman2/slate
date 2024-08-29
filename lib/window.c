@@ -83,14 +83,15 @@ static inline void free_buffer(struct SlWindow *win) {
                     win->width*win->height*4);
             // TODO: What can we do about this failure???
             DASSERT(0, "munmap(%p,%d) failed", win->shm_data,
-                    win->width*win->height*4);
+                win->width*win->height*4);
         }
         win->shm_data = 0;
     }
 }
 
 
-static inline bool create_buffer(struct SlWindow *win) {
+// This creates struct SlWindow:: shm_data, buffer, 
+static inline bool CreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
     DASSERT(win->width > 0);
@@ -192,6 +193,10 @@ static void toplevel_configure(void) {
 static void xdg_toplevel_handle_close(struct SlToplevel *t,
 		struct xdg_toplevel *xdg_toplevel) {
 
+    DASSERT(t);
+    DASSERT(xdg_toplevel);
+    DASSERT(xdg_toplevel == t->xdg_toplevel);
+
     DSPEW();
     t->window.open = false;
     // TODO: Looks like if any top level window gets here the "display" is
@@ -219,6 +224,9 @@ static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
     DASSERT(t->window.type == SlWindowType_topLevel);
     DASSERT(t->window.parent == 0);
 
+    if(t->xdg_toplevel)
+        xdg_toplevel_destroy(t->xdg_toplevel);
+
     // Remove t from the slate display slate toplevel windows list:
     if(t->next) {
         DASSERT(t != d->lastToplevel);
@@ -239,6 +247,58 @@ static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
     free(t);
 }
 
+
+void AddChild(struct SlToplevel *t, struct SlWindow *win) {
+
+    DASSERT(t);
+    DASSERT(win);
+    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(win->type == SlWindowType_popup);
+    DASSERT(!win->prev);
+    DASSERT(!win->next);
+
+    // Add win as the lastChild
+    win->prev = t->lastChild;
+
+    if(t->lastChild) {
+        DASSERT(t->firstChild);
+        DASSERT(!t->firstChild->prev);
+        DASSERT(!t->lastChild->next);
+        t->lastChild->next = win;
+    } else {
+        DASSERT(!t->firstChild);
+        t->firstChild = win;
+    }
+    t->lastChild = win;
+}
+
+
+void RemoveChild(struct SlToplevel *t, struct SlWindow *win) {
+
+    DASSERT(t);
+    DASSERT(win);
+    DASSERT(t->window.type == SlWindowType_topLevel);
+
+
+    if(win->prev) {
+        DASSERT(win != t->firstChild);
+        win->prev->next = win->next;
+    } else {
+        DASSERT(win == t->firstChild);
+        t->firstChild = win->next;
+    }
+    if(win->next) {
+        DASSERT(win != t->lastChild);
+        win->next->prev = win->prev;
+        win->next = 0;
+    } else {
+        DASSERT(win == t->lastChild);
+        t->lastChild = win->prev;
+    }
+    win->prev = 0;
+}
+
+
 void _slWindow_destroy(struct SlDisplay *d,
         struct SlWindow *win) {
 
@@ -249,6 +309,7 @@ void _slWindow_destroy(struct SlDisplay *d,
 
     // Cleanup in reverse order of construction.
 
+    // Free the shared memory pixels buffer.
     free_buffer(win);
 
     if(win->wl_callback) {
@@ -256,19 +317,28 @@ void _slWindow_destroy(struct SlDisplay *d,
         wl_callback_destroy(win->wl_callback);
     }
 
-    if(win->xdg_toplevel)
-        xdg_toplevel_destroy(win->xdg_toplevel);
-
     if(win->xdg_surface)
         xdg_surface_destroy(win->xdg_surface);
 
     if(win->wl_surface)
         wl_surface_destroy(win->wl_surface);
 
+WARN("              win->type=%d", win->type);
+
     switch(win->type) {
 
         case SlWindowType_topLevel:
+            while(((struct SlToplevel *)win)->lastChild) {
+                DASSERT(((struct SlToplevel *)win)->lastChild->type ==
+                        SlWindowType_popup);
+                _slWindow_destroy(d, ((struct SlToplevel *)win)->lastChild);
+            }
             FreeToplevel(d, (void *) win);
+            break;
+        case SlWindowType_popup:
+            RemoveChild(((struct SlPopup *)win)->parent, win);
+            memset(win, 0, sizeof(struct SlPopup));
+            free(win);
             break;
         default:
             ASSERT(0, "WRITE CODE to Free new window type %d",
@@ -339,6 +409,9 @@ struct wl_callback_listener frame_listener = {
 // function.  Maybe there is a better way to do this.
 //
 static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
+
+    DASSERT(win);
+    DASSERT(win->wl_surface);
 
     if(!surface_damage_func) {
         // WTF (what the fuck): Why do they change the names of functions
@@ -411,12 +484,19 @@ static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 }
 
 
-struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
+// Creates the generic SlWindow before it's made into a particular
+// slate type of window like toplevel, popup, sub, fullscreen (???).
+//
+// Return true on error.
+bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
     ASSERT(d);
+    DASSERT(win);
+    DASSERT(!win->wl_surface);
+    DASSERT(!win->xdg_surface);
 
     // If the user is destroying the display (SlDisplay) in another thread
     // while calling this in this thread we are screwed.  I guess it's up
@@ -429,84 +509,106 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
     DASSERT(compositor);
     DASSERT(xdg_wm_base);
 
-    struct SlToplevel *t = calloc(1, sizeof(*t));
-    ASSERT(t, "calloc(1,%zu) failed", sizeof(*t));
-
-    struct SlWindow *win = &t->window;
-
-    t->display = d;
-    win->type = SlWindowType_topLevel;
-    win->width = w;
-    win->height = h;
-    win->draw = draw;
-
     // TODO:
     // Lets not code for funny width and heights yet. Uncommon values
     // could be used in the future.
     ASSERT(w > 0);
     ASSERT(h > 0);
 
-    CHECK(pthread_mutex_lock(&d->mutex));
-
-    // Add win to the display's toplevel windows list:
-    AddToplevel(d, (void *) win);
-
-
-    // Wayland window stuff:
+    win->width = w;
+    win->height = h;
+    win->draw = draw;
 
     win->wl_surface = wl_compositor_create_surface(compositor);
     if(!win->wl_surface) {
         ERROR("wl_compositor_create_surface() failed");
-        goto fail;
+        return true;
     }
+
+    GetSurfaceDamageFunction(win);
 
     win->xdg_surface = xdg_wm_base_get_xdg_surface(
             xdg_wm_base, win->wl_surface);
 
     if(!win->xdg_surface) {
         ERROR("xdg_wm_base_get_xdg_surface() failed");
-        goto fail;
+        return true;
     }
-
-    win->xdg_toplevel = xdg_surface_get_toplevel(win->xdg_surface);
-    if(!win->xdg_toplevel) {
-        ERROR("xdg_surface_get_toplevel() failed");
-        goto fail;
-    }
-
-    GetSurfaceDamageFunction(win);
 
     if(xdg_surface_add_listener(win->xdg_surface,
                 &xdg_surface_listener, win)) {
         ERROR("xdg_surface_add_listener(,,) failed");
-        goto fail;
-    }
-    if(xdg_toplevel_add_listener(win->xdg_toplevel,
-                &xdg_toplevel_listener, win)) {
-        ERROR("xdg_toplevel_add_listener(,,) failed");
-        goto fail;
+        return true;
     }
 
-    // Perform the initial commit and wait for the first configure event.
-    //
-    // Removing this hangs the process.  This seems to prime the pump.
-    // I don't understand why this is called so much.
-    //
-    wl_surface_commit(win->wl_surface);
-
-    while(!win->configured)
-        if(wl_display_dispatch(wl_display) == -1) {
-	    ERROR("wl_display_dispatch() failed can't configure window");
-            goto fail;
-        }
-
-    if(create_buffer(win))
-        goto fail;
+    // When this is called seems to be variable.
+    if(CreateBuffer(win))
+        return true;
 
     DASSERT(win->buffer);
     DASSERT(win->wl_surface);
     DASSERT(win->shm_data);
     DASSERT(!win->wl_callback);
+
+    return false; // false ==success
+}
+
+
+
+struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
+        uint32_t w, uint32_t h, int32_t x, int32_t y,
+        int (*draw)(struct SlWindow *win, void *pixels,
+            uint32_t w, uint32_t h, uint32_t stride)) {
+
+    struct SlToplevel *t = calloc(1, sizeof(*t));
+    ASSERT(t, "calloc(1,%zu) failed", sizeof(*t));
+
+    struct SlWindow *win = &t->window;
+    t->display = d;
+    win->type = SlWindowType_topLevel;
+
+
+    CHECK(pthread_mutex_lock(&d->mutex));
+
+    // Start with the generic wayland surface stuff.
+    if(CreateWindow(d, win, w, h, x, y, draw))
+        goto fail;
+
+    // Now create wayland toplevel specific stuff.
+    //
+    // Add win to the display's toplevel windows list:
+    AddToplevel(d, (void *) win);
+    //
+    t->xdg_toplevel = xdg_surface_get_toplevel(win->xdg_surface);
+    if(!t->xdg_toplevel) {
+        ERROR("xdg_surface_get_toplevel() failed");
+        goto fail;
+    }
+    //
+    if(xdg_toplevel_add_listener(t->xdg_toplevel,
+                &xdg_toplevel_listener, win)) {
+        ERROR("xdg_toplevel_add_listener(,,) failed");
+        goto fail;
+    }
+
+    // Perform the initial commit and wait for the first configure event
+    // for this toplevel thingy.
+    //
+    // Removing this, wl_surface_commit(), hangs the process.  This seems
+    // to prime the pump.  I don't understand why this is called so
+    // much.
+    //
+    wl_surface_commit(win->wl_surface);
+
+    while(!win->configured)
+        // TODO: Could this get tricky if there are lots of other events
+        // that are not related to this toplevel surface?
+        //
+        if(wl_display_dispatch(wl_display) == -1) {
+	    ERROR("wl_display_dispatch() failed can't configure window");
+            goto fail;
+        }
+
 
     if(draw)
         // Call callback in Draw().
@@ -548,8 +650,10 @@ void slWindow_setDraw(struct SlWindow *win,
 
 void slWindow_destroy(struct SlWindow *w) {
 
+    DASSERT(w);
     DASSERT(w->type == SlWindowType_topLevel, "WRITE MORE CODE");
     struct SlDisplay *d = ((struct SlToplevel *) w)->display;
+    DASSERT(d);
 
     CHECK(pthread_mutex_lock(&d->mutex));
     _slWindow_destroy(d, w);

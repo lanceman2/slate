@@ -69,6 +69,9 @@ struct SlPopup {
     struct SlWindow window;
 
     struct SlToplevel *parent;
+
+    struct xdg_popup *xdg_popup;
+    struct xdg_positioner *xdg_positioner;
 };
 
 

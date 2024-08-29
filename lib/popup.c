@@ -33,6 +33,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         int (*draw)(struct SlWindow *win, void *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
+    DASSERT(xdg_wm_base);
     DASSERT(parent);
     ASSERT(parent->type == SlWindowType_topLevel);
     struct SlToplevel *t = (void *) parent;
@@ -53,7 +54,22 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
     if(CreateWindow(d, win, w, h, x, y, draw))
         goto fail;
 
+    // Add this popup window to the list of children in the
+    // parent toplevel window.
     AddChild(t, win);
+
+    // Add stuff specific to the popup surface/window thingy.
+    p->xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
+    if(!p->xdg_positioner) {
+        ERROR("xdg_wm_base_create_positioner() failed");
+        goto fail;
+    }
+    p->xdg_popup = xdg_surface_get_popup(win->xdg_surface, parent->xdg_surface,
+                    p->xdg_positioner);
+    if(!p->xdg_popup) {
+        ERROR("xdg_surface_get_popup() failed");
+        goto fail;
+    }
 
     // Success:
 

@@ -248,6 +248,11 @@ static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 }
 
 
+// TODO: It questionable whither of not we need to keep this list of
+// children in the toplevel window/surface thingy; it could be the wayland
+// client API (application programming interface) has an interface we can
+// use to access the toplevel's children.
+//
 void AddChild(struct SlToplevel *t, struct SlWindow *win) {
 
     DASSERT(t);
@@ -279,7 +284,6 @@ void RemoveChild(struct SlToplevel *t, struct SlWindow *win) {
     DASSERT(win);
     DASSERT(t->window.type == SlWindowType_topLevel);
 
-
     if(win->prev) {
         DASSERT(win != t->firstChild);
         win->prev->next = win->next;
@@ -305,9 +309,30 @@ void _slWindow_destroy(struct SlDisplay *d,
     DASSERT(d);
     DASSERT(win);
 
-    // Cleanup wayland stuff for this window:
+    // Cleanup wayland stuff for this window in reverse order of
+    // construction.  (So I think...)
 
-    // Cleanup in reverse order of construction.
+    switch(win->type) {
+
+        case SlWindowType_topLevel:
+            break;
+        case SlWindowType_popup:
+        {
+            struct SlPopup *p = (void *) win;
+            if(p->xdg_popup) {
+                xdg_popup_destroy(p->xdg_popup);
+                p->xdg_popup = 0;
+            }
+            if(p->xdg_positioner) {
+                xdg_positioner_destroy(p->xdg_positioner);
+                p->xdg_positioner = 0;
+            }
+            break;
+        }
+        default:
+            ASSERT(0, "WRITE CODE to Free window type %d", win->type);
+    }
+
 
     // Free the shared memory pixels buffer.
     free_buffer(win);
@@ -323,7 +348,7 @@ void _slWindow_destroy(struct SlDisplay *d,
     if(win->wl_surface)
         wl_surface_destroy(win->wl_surface);
 
-WARN("              win->type=%d", win->type);
+    //DSPEW("Cleaning up win->type=%d", win->type);
 
     switch(win->type) {
 
@@ -341,8 +366,7 @@ WARN("              win->type=%d", win->type);
             free(win);
             break;
         default:
-            ASSERT(0, "WRITE CODE to Free new window type %d",
-                    win->type);
+            ASSERT(0, "WRITE CODE to Free window type %d", win->type);
     }
 }
 
@@ -527,6 +551,11 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     GetSurfaceDamageFunction(win);
 
+    // https://wayland-book.com/xdg-shell-basics.html
+    //
+    // The XDG (cross-desktop group) shell is a standard protocol
+    // extension for Wayland which describes the semantics for application
+    // windows. 
     win->xdg_surface = xdg_wm_base_get_xdg_surface(
             xdg_wm_base, win->wl_surface);
 

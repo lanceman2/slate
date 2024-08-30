@@ -64,12 +64,22 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         ERROR("xdg_wm_base_create_positioner() failed");
         goto fail;
     }
-    p->xdg_popup = xdg_surface_get_popup(win->xdg_surface, parent->xdg_surface,
-                    p->xdg_positioner);
+
+    DASSERT(win->width > 0);
+    DASSERT(win->height > 0);
+    xdg_positioner_set_size(p->xdg_positioner,
+            win->width, win->height);
+    xdg_positioner_set_anchor_rect(p->xdg_positioner,
+            win->x, win->x, win->width, win->height);
+
+    p->xdg_popup = xdg_surface_get_popup(win->xdg_surface,
+            parent->xdg_surface, p->xdg_positioner);
     if(!p->xdg_popup) {
         ERROR("xdg_surface_get_popup() failed");
         goto fail;
     }
+
+
 
     // Success:
 

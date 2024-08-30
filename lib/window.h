@@ -41,7 +41,8 @@ struct SlWindow {
 
     bool configured, open;
 
-    int width, height; // in pixels
+    uint32_t width, height; // in pixels
+    int32_t x, y;
 };
 
 

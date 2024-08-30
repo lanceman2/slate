@@ -545,6 +545,8 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     win->width = w;
     win->height = h;
+    win->x = x;
+    win->y = y;
     win->draw = draw;
 
     win->wl_surface = wl_compositor_create_surface(compositor);

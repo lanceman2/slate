@@ -39,7 +39,7 @@ struct SlWindow {
     // (firstChild, lastChild) windows.
     struct SlWindow *prev, *next;
 
-    bool configured, open;
+    bool configured, open, framed;
 
     uint32_t width, height; // in pixels
     int32_t x, y;
@@ -90,5 +90,7 @@ extern bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 extern void AddChild(struct SlToplevel *t, struct SlWindow *win);
 //
 extern void RemoveChild(struct SlToplevel *t, struct SlWindow *win);
+
+extern bool ConfigureSurface(struct SlWindow *win);
 
 

@@ -28,6 +28,37 @@
 
 
 
+
+
+void configure(void *data,
+        struct xdg_popup *xdg_popup,
+	int32_t x, int32_t y,
+	int32_t width, int32_t height) {
+
+    DSPEW();
+}
+
+void popup_done(void *data, struct xdg_popup *xdg_popup) {
+
+    DSPEW();
+}
+
+void repositioned(void *data,
+        struct xdg_popup *xdg_popup,
+	uint32_t token) {
+
+    DSPEW();
+}
+
+
+static struct xdg_popup_listener xdg_popup_listener = {
+
+    .configure = configure,
+    .popup_done = popup_done,
+    .repositioned = repositioned
+};
+
+
 struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, void *pixels,
@@ -50,13 +81,13 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
-    // Start with the generic wayland surface stuff.
-    if(CreateWindow(d, win, w, h, x, y, draw))
-        goto fail;
-
     // Add this popup window to the list of children in the
     // parent toplevel window.
     AddChild(t, win);
+
+    // Start with the generic wayland surface stuff.
+    if(CreateWindow(d, win, w, h, x, y, draw))
+        goto fail;
 
     // Add stuff specific to the popup surface/window thingy.
     p->xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
@@ -67,10 +98,11 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
 
     DASSERT(win->width > 0);
     DASSERT(win->height > 0);
+
     xdg_positioner_set_size(p->xdg_positioner,
             win->width, win->height);
     xdg_positioner_set_anchor_rect(p->xdg_positioner,
-            win->x, win->x, win->width, win->height);
+            win->x, win->y, win->width, win->height);
 
     p->xdg_popup = xdg_surface_get_popup(win->xdg_surface,
             parent->xdg_surface, p->xdg_positioner);
@@ -79,7 +111,14 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         goto fail;
     }
 
+    if(xdg_popup_add_listener(p->xdg_popup,
+                &xdg_popup_listener, p)) {
+        ERROR("xdg_positioner_add_listener(,,) failed");
+        goto fail;
+    }
 
+    if(ConfigureSurface(win))
+        goto fail;
 
     // Success:
 

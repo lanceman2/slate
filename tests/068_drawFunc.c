@@ -71,11 +71,10 @@ int main(void) {
             600, 600, 100, 10, draw/*draw()*/);
     if(!win) return 1; // fail
 
-    fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
 
     //slWindow_setDraw(win, draw);
 
-    while(slDisplay_dispatch(d));
+    //while(slDisplay_dispatch(d));
 
 
     // Use automatic cleanup from the libslate.so destructor.

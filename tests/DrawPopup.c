@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <signal.h>
-#include <string.h>
 
 #include "../include/slate.h"
 #include "../include/slate_debug.h"
@@ -35,12 +34,12 @@ int draw(struct SlWindow *win, void *pixels,
             // ARGB color pix is for example
             // like 0x0AFF0022 is alpha=0A red=FF green=00 blue=22
 
-            if(x > 400)
-                *pix = 0x0AFF0000;
-            else if(x > 220) 
-                *pix = 0x0A0000FF;
+            if(x > 300)
+                *pix = 0xFFFF0000;
+            else if(x > 120) 
+                *pix = 0x0F0000FF;
             else
-                *pix = 0x0A00FF00;
+                *pix = 0xFF00FF00;
 
             // Go to next pixel.
             pix++;
@@ -49,12 +48,13 @@ int draw(struct SlWindow *win, void *pixels,
         pix += linePad;
     }
 
-
-    if(draw_count >= 200)
-        return 1; // stop calling
+    //if(draw_count >= 0)
+    //    return 1; // stop calling
 
     return 0; //continue to calling at every frame, like at 60 Hz.
 }
+
+
 
 int main(void) {
 
@@ -64,24 +64,20 @@ int main(void) {
     ASSERT(signal(SIGSEGV, catcher) != SIG_ERR);
     ASSERT(signal(SIGABRT, catcher) != SIG_ERR);
 
+
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/);
-    if(!win) return 1; // fail
+    struct SlWindow *w = slWindow_createToplevel(
+            d, 500, 400, 10, 10, 0);
+    if(!w) return 1; // fail
 
-    fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
+    struct SlWindow *p = slWindow_createPopup(
+            w, 400, 300, -4400, 10000, draw);
+    if(!p) return 1; // fail
 
-    //slWindow_setDraw(win, draw);
 
     while(slDisplay_dispatch(d));
-
-
-    // Use automatic cleanup from the libslate.so destructor.
-
-    // If we make it here it does not seem to crash.
-    DSPEW("DONE");
 
     return 0;
 }

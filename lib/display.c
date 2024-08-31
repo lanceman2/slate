@@ -19,12 +19,18 @@ struct wl_compositor *compositor = 0;
 struct xdg_wm_base *xdg_wm_base = 0;
 
 
-// wl_display is a singleton object.  That's one point against Wayland.
+// We set this to the SlWindow with the wl_surface that got the
+// pointer enter and unset it on pointer leave:
+static struct SlWindow *currentWindow = 0;
+
+
+// wl_display is a singleton object and so are many other wayland-client
+// objects.  That's one point against Wayland.
 //
 // I guess that means there is zero or one global instances in existence
 // for a given process at a given time.  I need to test if it's the
-// library destructor that brings the number of them to zero or does the
-// wl_display_disconnect() actually work correctly; or do both the
+// library destructor that brings the number of them to zero and/or does
+// the wl_display_disconnect() actually work correctly; or do both the
 // library destructor and the wl_display_disconnect() work.  Let's hope it
 // does not leak system resources like other singletons do; like
 // QApplication and gtk_init().  I'm not optimistic about other peoples
@@ -32,6 +38,9 @@ struct xdg_wm_base *xdg_wm_base = 0;
 // leaked system resources (file descriptors and memory mappings), and
 // later found that they do.  Now I just assume everyone writes shitty
 // code; I know I do.
+//
+// Test codes run with Valgrind show wl_display_disconnect() actually
+// works correctly.  Hurray for libwayland-client.so not sucking!
 
 // returned from wl_display_connect().
 struct wl_display *wl_display = 0;
@@ -69,24 +78,37 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
 };
 
 
-static void enter(void *, struct wl_pointer *, uint32_t,
-        struct wl_surface *, wl_fixed_t,  wl_fixed_t) {
-    DSPEW();
+static void enter(void *data,
+        struct wl_pointer *wl_pointer, uint32_t serial,
+        struct wl_surface *wl_surface, wl_fixed_t x,  wl_fixed_t y) {
+
+    DASSERT(!currentWindow);
+    currentWindow = wl_surface_get_user_data(wl_surface);
+    DSPEW("wl_surface=%p x,y=%d,%d",wl_surface, x, y);
 }
 
-static void leave(void *, struct wl_pointer *, uint32_t,
-        struct wl_surface *) {
+static void leave(void *data, struct wl_pointer *wl_pointer,
+        uint32_t serial, struct wl_surface *wl_surface) {
+    
+    DASSERT(currentWindow);
+    DASSERT((void *) currentWindow == wl_surface_get_user_data(wl_surface));
+    currentWindow = 0;
+
     DSPEW();
 }
 
 static void motion(void *, struct wl_pointer *, uint32_t,
         wl_fixed_t,  wl_fixed_t) {
-    DSPEW();
+    //DSPEW();
 }
 
-static void button(void *, struct wl_pointer *, uint32_t,  uint32_t,
-        uint32_t,  uint32_t) {
+static void button(void *, struct wl_pointer *wl_pointer,
+        uint32_t serial,
+        uint32_t time,
+        uint32_t button, uint32_t state) {
     DSPEW();
+
+
 }
 
 static void axis(void *, struct wl_pointer *, uint32_t,

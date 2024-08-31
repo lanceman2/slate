@@ -22,7 +22,7 @@ void (*surface_damage_func)(struct wl_surface *wl_surface,
         int32_t x, int32_t y, int32_t width, int32_t height) = 0;
 
 
-static inline void PostDraw(struct SlWindow *win) {
+static inline void PostDrawDamage(struct SlWindow *win) {
 
     struct wl_surface *wl_surface = win->wl_surface;
 
@@ -59,6 +59,8 @@ static inline void Draw(struct SlWindow *win) {
                 win->width*4/*stride in bytes*/))
         // We will continue to call this draw in this frame thingy
         // when the time for the next frame happens.
+        //
+        // TODO: This can fail, so ...
         AddFrameListener(win);
 }
 
@@ -382,7 +384,6 @@ static bool AddFrameListener(struct SlWindow *win) {
 
     DASSERT(win);
     DASSERT(!win->wl_callback);
-    DASSERT(win->draw);
 
     win->wl_callback = wl_surface_frame(win->wl_surface);
     if(!win->wl_callback) {
@@ -405,12 +406,16 @@ static void frame_new(struct SlWindow *win,
         struct wl_callback* cb, uint32_t a) {\
 
     DASSERT(win);
-    DASSERT(win->draw);
+    //DASSERT(win->draw);
     DASSERT(win->wl_surface);
     DASSERT(cb);
     DASSERT(cb == win->wl_callback);
     DASSERT(win->width > 0);
     DASSERT(win->height > 0);
+
+    // TODO: extra line of code not needed after the first frame_new()
+    // call.
+    if(!win->framed) win->framed = true;
 
     // Why is this not automatic?  It seems this must be done every call
     // to the wl_callback (this function); so why is this not automatic?
@@ -419,9 +424,10 @@ static void frame_new(struct SlWindow *win,
     // and so it's done for this for this time.
     win->wl_callback = 0;
 
-    Draw(win);
-    PostDraw(win);
-
+    if(win->draw) {
+        Draw(win);
+        PostDrawDamage(win);
+    }
 }
 
 static
@@ -555,6 +561,8 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         return true;
     }
 
+    wl_surface_set_user_data(win->wl_surface, win);
+
     GetSurfaceDamageFunction(win);
 
     // https://wayland-book.com/xdg-shell-basics.html
@@ -589,6 +597,69 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 }
 
 
+bool ConfigureSurface(struct SlWindow *win) {
+
+    // Perform the initial commit and wait for the first configure event
+    // for this surface in this slWindow.
+    //
+    // Removing this, wl_surface_commit(), hangs the process.  This seems
+    // to prime the pump.  I don't understand why this is called so
+    // much.
+    //
+    wl_surface_commit(win->wl_surface);
+
+    while(!win->configured)
+        // TODO: Could this get tricky if there are lots of other events
+        // that are not related to this surface/window?
+        //
+        if(wl_display_dispatch(wl_display) == -1) {
+	    ERROR("wl_display_dispatch() failed can't configure window");
+            return true;
+        }
+
+    if(win->draw)
+        // Call callback in Draw().
+        Draw(win);
+
+    win->framed = false;
+    if(!win->wl_callback) {
+        // We just use one frame call
+        //
+        // TODO: This can fail...
+        AddFrameListener(win);
+    }
+
+    PostDrawDamage(win);
+
+#if 1
+    // We have seen that the window is not visible on the desktop yet (at
+    // least not always); at this time.  Why?  We do not know.
+    //
+    // TODO: We need this new window/surface to be showing on the desktop
+    // after this function returns, otherwise things get fucked up; like
+    // added popup windows are not shown above the parent toplevel
+    // windows.  We are just guessing how to make this robust.
+    //
+    // We'll now wait for the compositor in the following
+    // wl_display_dispatch(); and hope it is visible after the first call
+    // to the frame callback function.  If the user did not pass in a
+    // draw() callback we just do not setup for another frame callback
+    // after the first one.
+    //
+    while(!win->framed) {
+        // TODO: Could this get tricky if there are lots of other
+        // events that are not related to this surface/window?
+        //
+        if(wl_display_dispatch(wl_display) == -1) {
+            ERROR("wl_display_dispatch() failed can't show window");
+            return true;
+        }
+    }
+#endif
+
+    return false; // success
+}
+
 
 struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
@@ -605,14 +676,14 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
-    // Start with the generic wayland surface stuff.
+    // Add win to the display's toplevel windows list:
+    AddToplevel(d, (void *) win);
+
+    // Create the generic wayland surface stuff.
     if(CreateWindow(d, win, w, h, x, y, draw))
         goto fail;
 
     // Now create wayland toplevel specific stuff.
-    //
-    // Add win to the display's toplevel windows list:
-    AddToplevel(d, (void *) win);
     //
     t->xdg_toplevel = xdg_surface_get_toplevel(win->xdg_surface);
     if(!t->xdg_toplevel) {
@@ -626,30 +697,8 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
-    // Perform the initial commit and wait for the first configure event
-    // for this toplevel thingy.
-    //
-    // Removing this, wl_surface_commit(), hangs the process.  This seems
-    // to prime the pump.  I don't understand why this is called so
-    // much.
-    //
-    wl_surface_commit(win->wl_surface);
-
-    while(!win->configured)
-        // TODO: Could this get tricky if there are lots of other events
-        // that are not related to this toplevel surface?
-        //
-        if(wl_display_dispatch(wl_display) == -1) {
-	    ERROR("wl_display_dispatch() failed can't configure window");
-            goto fail;
-        }
-
-
-    if(draw)
-        // Call callback in Draw().
-        Draw(win);
-
-    PostDraw(win);
+    if(ConfigureSurface(win))
+        goto fail;
 
     // Success:
 
@@ -678,7 +727,7 @@ void slWindow_setDraw(struct SlWindow *win,
 
     if(!win->wl_callback) {
         Draw(win);
-        PostDraw(win);
+        PostDrawDamage(win);
     }
 }
 

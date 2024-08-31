@@ -58,9 +58,17 @@ windowCountDraw_LDFLAGS := $(SL_LIB)
 draw_SOURCES := draw.c
 draw_LDFLAGS := $(SL_LIB)
 
+068_drawFunc_SOURCES := 068_drawFunc.c
+068_drawFunc_LDFLAGS := $(SL_LIB)
+
+
 
 070_popup_SOURCES := 070_popup.c
 070_popup_LDFLAGS := $(SL_LIB)
+
+DrawPopup_SOURCES := DrawPopup.c
+DrawPopup_LDFLAGS := $(SL_LIB)
+
 
 
 

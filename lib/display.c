@@ -21,7 +21,10 @@ struct xdg_wm_base *xdg_wm_base = 0;
 
 // We set this to the SlWindow with the wl_surface that got the
 // pointer enter and unset it on pointer leave:
-static struct SlWindow *currentWindow = 0;
+static struct SlWindow *pointerWindow = 0;
+// keyboard enter sets this and keyboard leave unsets this.
+static struct SlWindow *kbWindow = 0;
+
 
 
 // wl_display is a singleton object and so are many other wayland-client
@@ -82,17 +85,17 @@ static void enter(void *data,
         struct wl_pointer *wl_pointer, uint32_t serial,
         struct wl_surface *wl_surface, wl_fixed_t x,  wl_fixed_t y) {
 
-    DASSERT(!currentWindow);
-    currentWindow = wl_surface_get_user_data(wl_surface);
+    DASSERT(!pointerWindow);
+    pointerWindow = wl_surface_get_user_data(wl_surface);
     DSPEW("wl_surface=%p x,y=%d,%d",wl_surface, x, y);
 }
 
 static void leave(void *data, struct wl_pointer *wl_pointer,
         uint32_t serial, struct wl_surface *wl_surface) {
     
-    DASSERT(currentWindow);
-    DASSERT((void *) currentWindow == wl_surface_get_user_data(wl_surface));
-    currentWindow = 0;
+    DASSERT(pointerWindow);
+    DASSERT((void *) pointerWindow == wl_surface_get_user_data(wl_surface));
+    pointerWindow = 0;
 
     DSPEW();
 }
@@ -130,13 +133,18 @@ static void kb_map(void* data, struct wl_keyboard* kb,
 }
 
 static void kb_enter(void* data, struct wl_keyboard* kb,
-        uint32_t ser, struct wl_surface* srfc,
+        uint32_t ser, struct wl_surface* wl_surface,
         struct wl_array* keys) {
+    DASSERT(!kbWindow);
+    kbWindow = wl_surface_get_user_data(wl_surface);
     DSPEW();
 }
 
 static void kb_leave(void* data, struct wl_keyboard* kb,
-        uint32_t ser, struct wl_surface* srfc) {
+        uint32_t ser, struct wl_surface* wl_surface) {
+    DASSERT(kbWindow);
+    DASSERT((void *) kbWindow == wl_surface_get_user_data(wl_surface));
+    kbWindow = 0;
     DSPEW();
 }
 
@@ -144,17 +152,20 @@ static void kb_key(void* data, struct wl_keyboard* kb,
         uint32_t ser, uint32_t t, uint32_t key,
         uint32_t stat) {
 
+    DASSERT(kbWindow);
     DSPEW("key=%" PRIu32, key);
 }
 
 static void kb_mod(void* data, struct wl_keyboard* kb,
         uint32_t ser, uint32_t dep, uint32_t lat,
         uint32_t lock, uint32_t grp) {
+    DASSERT(kbWindow);
     DSPEW();
 }
 
 static void kb_repeat(void* data, struct wl_keyboard* kb,
         int32_t rate, int32_t del) {
+    DASSERT(kbWindow);
     DSPEW();
 }
 

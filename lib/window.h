@@ -22,6 +22,8 @@ struct SlWindow {
     // parent=0.
     struct SlWindow *parent;
 
+    // We store/get a pointer to this SlWindow in the wl_surface user_data
+    // using: wl_surface_set_user_data() and wl_surface_get_user_data().
     struct wl_surface *wl_surface;
     struct xdg_surface *xdg_surface;
 

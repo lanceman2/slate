@@ -34,8 +34,8 @@ struct SlWindow {
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
 
-    // This is where the shared memory pixels start:
-    void *shm_data;
+    // This is where the inter process shared memory pixels start:
+    void *pixels;
 
     // For the doubly linked list of children in the toplevel
     // (firstChild, lastChild) windows.

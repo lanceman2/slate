@@ -51,12 +51,12 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->wl_callback == 0);
 
     // Call the libslate.so users draw callback.  This draw() function
-    // can set the win->shm_data pixel value to what ever it wants to.
+    // can set the win->pixels pixel value to what ever it wants to.
     // These values will not be seen until the compositor process
     // decides to read these pixels from the shared memory.  In this
-    // process the shared memory is at virtual address win->shm_data.
+    // process the shared memory is at virtual address win->pixels.
     
-    int ret = win->draw(win, win->shm_data, win->width, win->height,
+    int ret = win->draw(win, win->pixels, win->width, win->height,
                 win->width*4/*stride in bytes*/);
 
     switch(ret) {
@@ -86,23 +86,23 @@ static inline void free_buffer(struct SlWindow *win) {
         win->buffer = 0;
     }
 
-    if(win->shm_data) {
+    if(win->pixels) {
         DASSERT(win->width);
         DASSERT(win->height);
         // TODO: Is it (shared memory size) always w*h*((4))??
-        if(munmap(win->shm_data, win->width*win->height*4)) {
-            ERROR("munmap(%p,%d) failed", win->shm_data,
+        if(munmap(win->pixels, win->width*win->height*4)) {
+            ERROR("munmap(%p,%d) failed", win->pixels,
                     win->width*win->height*4);
             // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%d) failed", win->shm_data,
+            DASSERT(0, "munmap(%p,%d) failed", win->pixels,
                 win->width*win->height*4);
         }
-        win->shm_data = 0;
+        win->pixels = 0;
     }
 }
 
 
-// This creates struct SlWindow:: shm_data, buffer, 
+// This creates struct SlWindow:: pixels, buffer, 
 static inline bool CreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
@@ -112,7 +112,7 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     // This does nothing if there is no buffer stuff yet.
     free_buffer(win);
 
-    DASSERT(!win->shm_data);
+    DASSERT(!win->pixels);
     DASSERT(!win->buffer);
 
 
@@ -127,9 +127,9 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Map the (pixels) shared memory file to this processes virtual
     // address space.
-    win->shm_data = mmap(0, size,
+    win->pixels = mmap(0, size,
             PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    if(win->shm_data == MAP_FAILED) {
+    if(win->pixels == MAP_FAILED) {
         ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
                 "MAP_SHARED,fd=%d,0) failed", size, fd);
 	close(fd);
@@ -147,7 +147,7 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     if(!pool) {
         ERROR("wl_shm_create_pool() failed");
         // TODO: What if this fails?:
-        ASSERT(munmap(win->shm_data, size) == 0);
+        ASSERT(munmap(win->pixels, size) == 0);
         close(fd);
         return true;
     }
@@ -159,13 +159,13 @@ static inline bool CreateBuffer(struct SlWindow *win) {
         ERROR("wl_shm_pool_create_buffer() failed");
         wl_shm_pool_destroy(pool);
         // TODO: What if this fails?:
-        ASSERT(munmap(win->shm_data, size) == 0);
+        ASSERT(munmap(win->pixels, size) == 0);
         close(fd);
         return true;
     }
 
     // We have what we needed.  Inter-process shared memory at process
-    // virtual address win->shm_data.
+    // virtual address win->pixels.
     wl_shm_pool_destroy(pool);
 
     // Now that we've mapped the file and created the wl_buffer, we no
@@ -174,7 +174,7 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
-    memset(win->shm_data, 250, size);
+    memset(win->pixels, 250, size);
 
     return false;
 }
@@ -600,7 +600,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     DASSERT(win->buffer);
     DASSERT(win->wl_surface);
-    DASSERT(win->shm_data);
+    DASSERT(win->pixels);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success

@@ -1,3 +1,8 @@
+root := ..
+
+include $(root)/freetype2.make
+include $(root)/fontconfig.make
+
 
 SL_LIB := -L../lib -lslate -Wl,-rpath=\$$ORIGIN/../lib
 
@@ -70,6 +75,14 @@ DrawPopup_SOURCES := DrawPopup.c
 DrawPopup_LDFLAGS := $(SL_LIB)
 
 
+
+102_helloFreeType_SOURCES := 102_helloFreeType.c
+102_helloFreeType_LDFLAGS := $(FREETYPE2_LDFLAGS) $(SL_LIB) -lm
+102_helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS)
+
+helloFreeType_SOURCES := 102_helloFreeType.c
+helloFreeType_LDFLAGS := $(FREETYPE2_LDFLAGS) $(SL_LIB) -lm
+helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS) -D LOOP
 
 
 include ../quickbuild.make

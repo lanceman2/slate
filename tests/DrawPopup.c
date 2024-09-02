@@ -13,7 +13,7 @@ void catcher(int sig) {
 static int draw_count = 0;
 
 static
-int draw(struct SlWindow *win, void *pixels,
+int draw(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
     // Line stride (increment, pitch or step size) is the number of bytes
@@ -73,7 +73,7 @@ int main(void) {
     if(!w) return 1; // fail
 
     struct SlWindow *p = slWindow_createPopup(
-            w, 400, 300, -4400, 10000, draw);
+            w, 400, 300, -4400, -10000, draw);
     if(!p) return 1; // fail
 
 

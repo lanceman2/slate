@@ -31,7 +31,7 @@ struct SlWindow {
 
     struct wl_callback *wl_callback;
 
-    int (*draw)(struct SlWindow *win, void *pixels,
+    int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
 
     // This is where the shared memory pixels start:
@@ -84,7 +84,7 @@ extern void _slWindow_destroy(struct SlDisplay *d, struct SlWindow *w);
 
 extern bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *win, void *pixels,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride));
 
 // Toplevel windows can have children.  These Add and Remove from the

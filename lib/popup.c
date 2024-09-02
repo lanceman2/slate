@@ -61,7 +61,7 @@ static struct xdg_popup_listener xdg_popup_listener = {
 
 struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *win, void *pixels,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
     DASSERT(xdg_wm_base);

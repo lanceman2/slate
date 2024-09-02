@@ -48,20 +48,30 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->buffer);
     DASSERT(win->width);
     DASSERT(win->height);
+    DASSERT(win->wl_callback == 0);
 
     // Call the libslate.so users draw callback.  This draw() function
     // can set the win->shm_data pixel value to what ever it wants to.
     // These values will not be seen until the compositor process
     // decides to read these pixels from the shared memory.  In this
     // process the shared memory is at virtual address win->shm_data.
-    //
-    if(!win->draw(win, win->shm_data, win->width, win->height,
-                win->width*4/*stride in bytes*/))
-        // We will continue to call this draw in this frame thingy
-        // when the time for the next frame happens.
-        //
-        // TODO: This can fail, so ...
-        AddFrameListener(win);
+    
+    int ret = win->draw(win, win->shm_data, win->width, win->height,
+                win->width*4/*stride in bytes*/);
+
+    switch(ret) {
+        case 0:
+            // We will continue to call this draw in this frame thingy
+            // when the time for the next frame happens.
+            //
+            // TODO: This can fail, so ...
+            AddFrameListener(win);
+            break;
+        case 1:
+            // stop calling this draw function and remove the draw
+            // function.
+            win->draw = 0;
+    }
 }
 
 
@@ -524,7 +534,7 @@ static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 // Return true on error.
 bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *win, void *pixels,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
     ASSERT(d);
@@ -663,7 +673,7 @@ bool ConfigureSurface(struct SlWindow *win) {
 
 struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
-        int (*draw)(struct SlWindow *win, void *pixels,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
 
     struct SlToplevel *t = calloc(1, sizeof(*t));
@@ -716,7 +726,7 @@ fail:
 // TODO: Thread safety?
 //
 void slWindow_setDraw(struct SlWindow *win,
-        int (*draw)(struct SlWindow *win, void *pixels,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride)) {
     DASSERT(win);
     DASSERT(win->wl_surface);

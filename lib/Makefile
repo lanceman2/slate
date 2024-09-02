@@ -2,27 +2,12 @@ SUBDIRS := pkgconfig
 
 INSTALL_DIR = $(PREFIX)/lib
 
+root := ..
 
-WL_CFLAGS := $(shell pkg-config wayland-client --cflags)
-WL_LDFLAGS := $(shell pkg-config wayland-client --libs)
+include $(root)/freetype2.make
+include $(root)/fontconfig.make
+include $(root)/waylandclient.make
 
-
-ifeq ($(WL_LDFLAGS),)
-# Make make fail if pkg-config cannot find wayland-client.
-#
-# TODO: Are there other common wayland-client failure modes that can
-# happen when pkg-config can find wayland-client?  Like with the
-# wayland_scanner?
-#
-  $(error pkg-config wayland-client --libs FAILED)
-endif
-
-# TODO: Bug in wayland-protocols pkgdatadir adds extra "/"
-# like: //usr/share/wayland-protocols  Mar 15 2024
-#
-WL_PROTOCOL := $(shell pkg-config wayland-protocols\
- --variable=pkgdatadir)/stable/xdg-shell/xdg-shell.xml
-WL_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
 
 xdg-shell-protocol.c:
 	$(WL_SCANNER) private-code $(WL_PROTOCOL) xdg-shell-protocol.c

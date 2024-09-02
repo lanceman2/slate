@@ -15,7 +15,7 @@ static int color = 100;
 static int draw_count = 0;
 
 static
-int draw(struct SlWindow *win, void *pixels,
+int draw(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
     draw_count++;

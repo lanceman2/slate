@@ -14,7 +14,7 @@
 
 int main(void) {
 
-    // ref: https://gist.github.com/CallumDev
+    // ref: https://gist.github.com/CallumDev/7c66b3f9cf7a876ef75f
 
     RET_ERROR(FcInit(), 1, "FcInit() failed");
 
@@ -51,5 +51,8 @@ int main(void) {
     FcPatternDestroy(pat); // needs to be called for every pattern created
     FcConfigDestroy(config); // needs to be called for every config created
     FcFini(); // uninitializes Fontconfig
+
+    // Valgrind shows that there are no memory leaks in this program.
+
     return 0;
 }

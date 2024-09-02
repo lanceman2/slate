@@ -16,8 +16,7 @@ int main(void) {
 
     // ref: https://gist.github.com/CallumDev
 
-    FcBool ret = FcInit();
-    RET_ERROR(ret, 1, "FcInit() failed");
+    RET_ERROR(FcInit(), 1, "FcInit() failed");
 
     FcConfig *config = FcInitLoadConfigAndFonts(); // Most convenient of all the alternatives.
     RET_ERROR(config, 1, "FcInitLoadConfigAndFonts() failed");
@@ -27,7 +26,7 @@ int main(void) {
     FcPattern* pat = FcNameParse("Arial");
     RET_ERROR(pat, 1, "FcNameParse() failed");
 
-    ret = FcConfigSubstitute(config, pat, FcMatchPattern); //NECESSARY; it increases the scope of possible fonts
+    FcBool ret = FcConfigSubstitute(config, pat, FcMatchPattern); //NECESSARY; it increases the scope of possible fonts
     RET_ERROR(ret, 1, "FcConfigSubstitute() failed");
     FcDefaultSubstitute(pat); //NECESSARY; it increases the scope of possible fonts
 

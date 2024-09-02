@@ -85,4 +85,8 @@ helloFreeType_LDFLAGS := $(FREETYPE2_LDFLAGS) $(SL_LIB) -lm
 helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS) -D LOOP
 
 
+test: build
+	./run_tests
+
+
 include ../quickbuild.make

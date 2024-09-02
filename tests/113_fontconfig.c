@@ -27,7 +27,8 @@ int main(void) {
     FcPattern* pat = FcNameParse("Arial");
     RET_ERROR(pat, 1, "FcNameParse() failed");
 
-    FcConfigSubstitute(config, pat, FcMatchPattern); //NECESSARY; it increases the scope of possible fonts
+    ret = FcConfigSubstitute(config, pat, FcMatchPattern); //NECESSARY; it increases the scope of possible fonts
+    RET_ERROR(ret, 1, "FcConfigSubstitute() failed");
     FcDefaultSubstitute(pat); //NECESSARY; it increases the scope of possible fonts
 
     FcResult result;

@@ -75,7 +75,6 @@ DrawPopup_SOURCES := DrawPopup.c
 DrawPopup_LDFLAGS := $(SL_LIB)
 
 
-
 102_helloFreeType_SOURCES := 102_helloFreeType.c
 102_helloFreeType_LDFLAGS := $(FREETYPE2_LDFLAGS) $(SL_LIB) -lm
 102_helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS)
@@ -83,6 +82,16 @@ DrawPopup_LDFLAGS := $(SL_LIB)
 helloFreeType_SOURCES := 102_helloFreeType.c
 helloFreeType_LDFLAGS := $(FREETYPE2_LDFLAGS) $(SL_LIB) -lm
 helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS) -D LOOP
+
+
+111_fontconfig_SOURCES := 111_fontconfig.c ../lib/debug.c
+111_fontconfig_LDFLAGS := $(FONTCONFIG_LDFLAGS)
+111_fontconfig_CPPFLAGS := $(FONTCONFIG_CFLAGS)
+
+113_fontconfig_SOURCES := 113_fontconfig.c ../lib/debug.c
+113_fontconfig_LDFLAGS := $(FONTCONFIG_LDFLAGS)
+113_fontconfig_CPPFLAGS := $(FONTCONFIG_CFLAGS)
+
 
 
 test: build

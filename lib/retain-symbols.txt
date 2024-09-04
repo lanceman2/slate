@@ -1,6 +1,7 @@
 slDisplay_create
 slDisplay_dispatch
 slDisplay_destroy
+slFindFont
 slWindow_createToplevel
 slWindow_createPopup
 slWindow_destroy

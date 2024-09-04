@@ -3,11 +3,9 @@
 # Download some files from github.com and verify them with sha512sum.
 
 
-qb_tag=0.4
+qb_tag=master
 qb_url=https://raw.githubusercontent.com/lanceman2/quickbuild/$qb_tag/quickbuild.make
-qb_sha512sum=df58b143ab84d7f30dfae36c869226f6a6d3\
-299dd14193e4623cf23381ae5cf14aca7781adfee6a5ac9cc\
-99b1cc751cdd2974cda426647718ab9f669c35d652e
+qb_sha512sum=
 
 debug_tag=master
 debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/

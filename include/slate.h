@@ -67,6 +67,8 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
+SL_EXPORT unsigned char *SlFindFont(const unsigned char *exp);
+
 #ifdef __cplusplus
 }
 #endif

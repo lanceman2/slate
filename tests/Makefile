@@ -88,9 +88,8 @@ helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS) -D LOOP
 111_fontconfig_LDFLAGS := $(FONTCONFIG_LDFLAGS)
 111_fontconfig_CPPFLAGS := $(FONTCONFIG_CFLAGS)
 
-113_fontconfig_SOURCES := 113_fontconfig.c ../lib/debug.c
-113_fontconfig_LDFLAGS := $(FONTCONFIG_LDFLAGS)
-113_fontconfig_CPPFLAGS := $(FONTCONFIG_CFLAGS)
+113_FindFont_SOURCES := 113_FindFont.c
+113_FindFont_LDFLAGS := $(SL_LIB)
 
 
 
@@ -99,3 +98,4 @@ test: build
 
 
 include ../quickbuild.make
+

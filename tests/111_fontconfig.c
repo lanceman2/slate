@@ -27,7 +27,7 @@ int main(void) {
     FcPattern *pat = FcPatternCreate();
     RET_ERROR(pat, 1, "FcPatternCreate() failed");
 
-    FcObjectSet *os = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_LANG, 0);
+    FcObjectSet *os = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_LANG, NULL);
     RET_ERROR(os, 1, "FcObjectSetBuild() failed");
 
     FcFontSet *fs = FcFontList(config, pat, os);

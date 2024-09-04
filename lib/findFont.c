@@ -25,9 +25,11 @@
 // a program process than the answer is most likely, No.  Maybe it will be
 // called 3 times, and in that case the answer could still be, no.
 //
-// TODO: libfontconfig.so uses signed char for strings, WTF (what the
-// fuck), so should I be checking an setting the all the sign bits to
-// zero?  I always wondered why the sign bit was ignored in strings.
+// TODO: libfontconfig.so uses signed char for strings, so should I be
+// checking and setting the all the sign (8th) bits to zero?  I always
+// wondered why the sign bit was ignored in strings.  ASCII is a 7 bit
+// code.  So, what is the 8th bit supposed to be?  Many 8-bit codes (e.g.,
+// ISO 8859-1) contain ASCII as their lower half.
 //
 unsigned char *SlFindFont(const unsigned char *exp) {
 

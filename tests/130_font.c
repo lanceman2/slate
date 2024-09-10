@@ -65,7 +65,7 @@ int main(void) {
 
     if(slWindow_DrawText(win,
             "Hello World!", "FreeSans",
-            100/*x*/, 20/*y*/, 260/*width*/, 150/*height*/,
+            -80/*x*/, 20/*y*/, 260/*width*/, 150/*height*/,
             /*angle in radians*/
             0,
             //- 30.0 * M_PI/180.0,

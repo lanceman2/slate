@@ -234,7 +234,7 @@ bool slWindow_DrawText(struct SlWindow *win,
             Y = Y0 = 0;
         }
 
-#if 0
+#if 1
         fprintf(stderr, "[%c] x,y=(%" PRIu32 ",%" PRIu32 ") end=("
                 "%" PRIi32 ",%" PRIi32 ") "
                 "i0,j0=(%" PRIu32 ",%" PRIu32 ")\n", *text,
@@ -247,11 +247,14 @@ bool slWindow_DrawText(struct SlWindow *win,
         // TODO: quit the outer loop if we have no more overlap.
         //
         int32_t i = i0;
+
+        int32_t b_width = bitmap->width;
+        int32_t b_rows = bitmap->rows;
         // Note X is X0 is X.
-        while(X < xpix_end) {
+        while(X < xpix_end && i < b_width) {
             int32_t j = j0;
             Y = Y0;
-            while(Y < ypix_end) {
+            while(Y < ypix_end && j < b_rows) {
                 unsigned char val = bitmap->buffer[i + j*bitmapWidth];
                 pixels[X + Y*wwidth] = 0xF0000000 +
                     (val << 16) + (val << 8) + val;

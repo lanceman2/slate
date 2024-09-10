@@ -188,7 +188,10 @@ bool slWindow_DrawText(struct SlWindow *win,
 //
         const FT_Bitmap *bitmap = &slot->bitmap;
 
-        if(bitmap->rows <= 0 || bitmap->width <= 0)
+        int32_t b_width = bitmap->width;
+        int32_t b_rows = bitmap->rows;
+ 
+        if(b_rows <= 0 || b_width <= 0)
             // The char has no glyph image. It's a space or like thing.
             goto move_pen;
 
@@ -248,9 +251,7 @@ bool slWindow_DrawText(struct SlWindow *win,
         //
         int32_t i = i0;
 
-        int32_t b_width = bitmap->width;
-        int32_t b_rows = bitmap->rows;
-        // Note X is X0 is X.
+       // Note X is X0 is X.
         while(X < xpix_end && i < b_width) {
             int32_t j = j0;
             Y = Y0;

@@ -5,6 +5,7 @@ slFindFont
 slWindow_createToplevel
 slWindow_createPopup
 slWindow_destroy
+slWindow_DrawText
 assertAction
 getLibSpewLevel
 setSpewLevel

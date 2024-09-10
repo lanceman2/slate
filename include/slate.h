@@ -67,7 +67,19 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
-SL_EXPORT unsigned char *SlFindFont(const unsigned char *exp);
+// TODO: remove this interface.
+SL_EXPORT char *slFindFont(const char *exp);
+
+
+// libfreetype.so wrapper functions.
+//
+SL_EXPORT bool slWindow_DrawText(struct SlWindow *win,
+        const char *text, const char *font,
+        int32_t x, int32_t y, uint32_t w, uint32_t h,
+        double angle/*in radians*/,
+        uint32_t bgColor,
+        uint32_t fgColor);
+
 
 #ifdef __cplusplus
 }

@@ -16,11 +16,11 @@
 int main(void) {
 
     const char *font = "NotoSans";
-    char *file = (char *) SlFindFont((unsigned char *) font);
+    char *file = slFindFont(font);
 
     if(!file) return 1;
 
-    fprintf(stderr, "SlFindFont(\"%s\") = %s\n", font, file);
+    fprintf(stderr, "slFindFont(\"%s\") = %s\n", font, file);
 
     free(file);
 

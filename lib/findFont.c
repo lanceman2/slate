@@ -31,14 +31,14 @@
 // code.  So, what is the 8th bit supposed to be?  Many 8-bit codes (e.g.,
 // ISO 8859-1) contain ASCII as their lower half.
 //
-unsigned char *SlFindFont(const unsigned char *exp) {
+char *slFindFont(const char *exp) {
 
-    RET_ERROR(exp, 0, "SlFindFont(exp=0) failed");
+    RET_ERROR(exp, 0, "slFindFont(exp=0) failed exp can't be 0");
 
     FcConfig *config;
     FcPattern *pat;
     FcPattern *font;
-    unsigned char *file = 0;
+    char *file = 0;
 
     RET_ERROR(FcInit(), 0, "FcInit() failed");
 
@@ -46,7 +46,7 @@ unsigned char *SlFindFont(const unsigned char *exp) {
     if(!config)
         FAIL(config, "FcInitLoadConfigAndFonts() failed");
 
-    pat = FcNameParse(exp);
+    pat = FcNameParse((unsigned char *) exp);
     if(!pat)
         FAIL(pat, "FcNameParse(\"%s\") failed", exp);
 
@@ -61,14 +61,14 @@ unsigned char *SlFindFont(const unsigned char *exp) {
     if(!font)
         FAIL(font, "FcFontMatch() failed");
 
-    if(FcPatternGetString(font, FC_FILE, 0, &file) != FcResultMatch) {
+    if(FcPatternGetString(font, FC_FILE, 0,
+                (unsigned char **) &file) != FcResultMatch) {
         DASSERT(file == 0);
         FAIL(all, "FcPatternGetString() failed");
     }
 
     DASSERT(file);
-    // TODO: WTF is with unsigned
-    file = (unsigned char *) strdup((const char *) file);
+    file = strdup(file);
     ASSERT(file, "strdup() failed");
 
     // Cleanup in reverse order on your way out of this function:

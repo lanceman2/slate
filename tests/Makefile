@@ -91,6 +91,15 @@ helloFreeType_CPPFLAGS := $(FREETYPE2_CFLAGS) -D LOOP
 113_FindFont_SOURCES := 113_FindFont.c
 113_FindFont_LDFLAGS := $(SL_LIB)
 
+130_font_SOURCES := 130_font.c
+130_font_LDFLAGS := $(SL_LIB)
+
+font_SOURCES := 130_font.c
+font_LDFLAGS := $(SL_LIB)
+font_CPPFLAGS := -D LOOP
+
+
+
 
 
 test: build

@@ -35,7 +35,7 @@ struct SlWindow {
             uint32_t w, uint32_t h, uint32_t stride);
 
     // This is where the inter process shared memory pixels start:
-    void *pixels;
+    uint32_t *pixels;
 
     // For the doubly linked list of children in the toplevel
     // (firstChild, lastChild) windows.
@@ -94,5 +94,9 @@ extern void AddChild(struct SlToplevel *t, struct SlWindow *win);
 extern void RemoveChild(struct SlToplevel *t, struct SlWindow *win);
 
 extern bool ConfigureSurface(struct SlWindow *win);
+
+// TODO: Damage just a rectangular region of interest.
+extern void PushPixels(struct SlWindow *win);
+
 
 

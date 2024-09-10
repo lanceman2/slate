@@ -28,6 +28,7 @@ libslate.so_SOURCES :=\
  window.c\
  popup.c\
  findFont.c\
+ font.c\
  shm.c
 libslate.so_CPPFLAGS := $(WL_CFLAGS) $(FONTCONFIG_CFLAGS)
 libslate.so_CFLAGS :=\

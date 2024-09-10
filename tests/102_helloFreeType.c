@@ -75,7 +75,7 @@ int draw(struct SlWindow *win, uint32_t *pix,
 /* Replace this function with something useful. */
 
 void
-draw_bitmap( FT_Bitmap*  bitmap,
+draw_bitmap(const FT_Bitmap*  bitmap,
              FT_Int      x,
              FT_Int      y)
 {
@@ -152,6 +152,7 @@ int main(void) {
     pen.x = 60 * 64; // 60 was 300
     pen.y = ( target_height - 300 ) * 64; // 300 was 200
 
+
     for ( n = 0; n < num_chars; n++ ) {
         /* set transformation */
         FT_Set_Transform( face, &matrix, &pen);
@@ -160,6 +161,7 @@ int main(void) {
         error = FT_Load_Char( face, text[n], FT_LOAD_RENDER );
         RET_ERROR(!error, 1, "FT_Load_Char() failed");
 
+fprintf(stderr, " %d ", slot->bitmap_left);
         /* now, draw to our target surface (convert position) */
         draw_bitmap( &slot->bitmap,
                  slot->bitmap_left,
@@ -169,6 +171,8 @@ int main(void) {
         pen.x += slot->advance.x;
         pen.y += slot->advance.y;
     }
+
+fprintf(stderr, "\n");
 
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail

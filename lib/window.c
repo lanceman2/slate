@@ -40,6 +40,11 @@ static inline void PostDrawDamage(struct SlWindow *win) {
 }
 
 
+void PushPixels(struct SlWindow *win) {
+
+    PostDrawDamage(win);
+}
+
 static inline void Draw(struct SlWindow *win) {
 
     DASSERT(win);

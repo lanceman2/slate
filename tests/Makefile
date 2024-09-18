@@ -2,6 +2,8 @@ root := ..
 
 include $(root)/freetype2.make
 include $(root)/fontconfig.make
+include $(root)/pangocairo.make
+
 
 
 SL_LIB := -L../lib -lslate -Wl,-rpath=\$$ORIGIN/../lib
@@ -99,6 +101,11 @@ font_LDFLAGS := $(SL_LIB)
 font_CPPFLAGS := -D LOOP
 
 
+ifneq ($(PANGOCAIRO_LDFLAGS),)
+pangocairo_SOURCES := pangocairo.c ../lib/debug.c
+pangocairo_LDFLAGS := $(PANGOCAIRO_LDFLAGS) -lm
+pangocairo_CPPFLAGS := $(PANGOCAIRO_CFLAGS)
+endif
 
 
 

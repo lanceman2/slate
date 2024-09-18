@@ -121,23 +121,23 @@ bool slWindow_DrawText(struct SlWindow *win,
     DSPEW("Loaded font file %s", ffile);
 
     /* 50pt at 100dpi.  The 64 seems to be a part of libfreetype2.so. */
-    error = FT_Set_Char_Size(f.face, 50 * 64, 0, 100, 0 );
+    //error = FT_Set_Char_Size(f.face, h * 64, 0, 0, 0 );
+    error = FT_Set_Pixel_Sizes(f.face, 0, h);
     if(error) {
         ERROR("FT_Set_Char_Size() failed");
         goto set;
     }
+    DSPEW("face height=%ld", f.face->size->metrics.height/64);
 
     FT_GlyphSlot slot = f.face->glyph;
 
-    // TODO: Add an angle option.
-    // What is this big-ass number 0x10000L for?
+    // What is this number (0x10000L) for?
     f.matrix.xx = (FT_Fixed)( cos( angle ) * 0x10000L );
     f.matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
     f.matrix.yx = (FT_Fixed)( sin( angle ) * 0x10000L );
     f.matrix.yy = (FT_Fixed)( cos( angle ) * 0x10000L );
 
-    /* the pen position in 26.6 cartesian space coordinates; */
-    /* start at (300,200) relative to the upper left corner  */
+    /* the pen position in 26.6 Cartesian space coordinates; */
     f.pen.x = 0;
     f.pen.y = 0;
 
@@ -155,7 +155,7 @@ bool slWindow_DrawText(struct SlWindow *win,
 
         error = FT_Load_Char(f.face, *text, FT_LOAD_RENDER);
         if(error) {
-            // TODO: What should we do in this very bad error case?
+            // TODO: What should we do in this bad error case?
             ERROR("FT_Load_Char(,%c,) failed", *text);
             goto set;
         }
@@ -195,9 +195,13 @@ bool slWindow_DrawText(struct SlWindow *win,
             // The char has no glyph image. It's a space or like thing.
             goto move_pen;
 
-        // Draw to pixels into shbitmap->rowsared memory at starting at (X,Y).
+        // Draw to pixels into shared memory at starting at (X,Y).
         int32_t X = x + slot->bitmap_left;
         int32_t Y = y - slot->bitmap_top + h;
+        //int32_t Y = y - slot->bitmap_top + f.face->size->metrics.height/64;
+        //int32_t Y = y + h - f.face->size->metrics.height/64;
+        //int32_t Y = y - slot->bitmap_top + h +
+          //          (h - f.face->size->metrics.height/64);
         int32_t Y0 = Y;
 
         // The image of glyph in pixel space is at X,Y and
@@ -205,7 +209,6 @@ bool slWindow_DrawText(struct SlWindow *win,
         int32_t xpix_end = X + bitmap->width;
         int32_t ypix_end = Y0 + bitmap->rows;
         int32_t bitmapWidth = bitmap->width;
-
 
         if(xpix_end > wwidth)
             // constrain by the window
@@ -245,13 +248,13 @@ bool slWindow_DrawText(struct SlWindow *win,
 #endif
 
         // We only iterate over values where the X,Y and bitmap spaces
-        // overlay.  If they do not overlay than we get no values.
+        // overlap.  If they do not overlap than we get no values.
         //
         // TODO: quit the outer loop if we have no more overlap.
         //
         int32_t i = i0;
 
-       // Note X is X0 is X.
+        // Note X is X0 is X.
         while(X < xpix_end && i < b_width) {
             int32_t j = j0;
             Y = Y0;

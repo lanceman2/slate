@@ -64,12 +64,12 @@ int main(void) {
     if(!win) return 1; // fail
 
     if(slWindow_DrawText(win,
-            "Hello World!", "FreeSans",
-            -80/*x*/, 20/*y*/, 260/*width*/, 150/*height*/,
+            "Hgello World!", "Mono",
+            0/*x*/, 120/*y*/, 1560/*width*/, 120/*height*/,
             /*angle in radians*/
             0,
             //- 30.0 * M_PI/180.0,
-            0/*bgColor*/, 0xF0FF10FF/*fgColor*/))
+            0xF0FF0000/*bgColor*/, 0xFF0009FF/*fgColor*/))
         return 1; // fail
 
 #ifdef LOOP

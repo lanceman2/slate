@@ -3,6 +3,7 @@ root := ..
 include $(root)/freetype2.make
 include $(root)/fontconfig.make
 include $(root)/pangocairo.make
+include $(root)/gobject-2.0.make
 
 
 
@@ -106,6 +107,13 @@ pangocairo_SOURCES := pangocairo.c ../lib/debug.c
 pangocairo_LDFLAGS := $(PANGOCAIRO_LDFLAGS) -lm
 pangocairo_CPPFLAGS := $(PANGOCAIRO_CFLAGS)
 endif
+
+ifneq ($(GOBJECT2_LDFLAGS),)
+gobject2_SOURCES := gobject2.c ../lib/debug.c
+gobject2_LDFLAGS := $(GOBJECT2_LDFLAGS) -lm
+gobject2_CPPFLAGS := $(GOBJECT2_CFLAGS)
+endif
+
 
 
 

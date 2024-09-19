@@ -1,8 +1,15 @@
-/* Simple example to use pangocairo to render text */
+/* Simple example to use libpangocairo to render text */
 //
 // Most of this code was taken from pango source:
 // pango/examples/cairosimple.c
 // https://github.com/GNOME/pango/blob/main/examples/cairosimple.c
+
+/* running with valgrind shows that libpangocairo-1.0.so leaks system
+ * resources:
+
+   $  ./valgrind_run_tests pangocairo
+
+*/
 
 #include <sys/wait.h>
 #include <stdio.h>

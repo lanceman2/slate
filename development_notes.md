@@ -17,14 +17,43 @@ slate attempts to not leak system resources like GTK3 and Qt6.  GTK3 and
 Qt6 make modular programming impossible (at least without dead code being
 stuck loaded in your program).  Both the GTK3 and Qt6 libraries leak lots
 of system resources.  They designed their "main loop" classes to never be
-cleaned up so long as your program (process) is running.  I call it bad
-form.  Making class objects without destructors; is bad form; especially
-when they are the most important class objects in the whole API (in both
-Qt6 and GTK3).  It's just lazy/sloppy coding.  Broken by design.  I have
-talked with their developers, and that's just how they ride.  Like their
-dogs that are not house broken.  I don't expect newer versions to improve
-after talking with the developers.  If my code sucks (in the robust code
-sense) please let me know.
+cleaned up so long as your program (process) is running.  Making class
+objects without destructors; is bad form; especially when they are the
+most important class objects in the whole API (in both Qt6 and GTK3).  I
+have talked with their developers, and that's just how they ride.  I don't
+expect newer versions to improve after talking with the developers.  If my
+code sucks (in the robust code sense) please let me know.  I'm one of
+those guys that demand perfection.  Code that leaks system resources (by
+design and implementation) is not acceptable.
+
+Looks like libgobject-2.0.so has lots of memory leaks which makes using
+all the higher level (dependent) GTK libraries (linked in programs) leak
+too.  libgobject-2.0.so allocates memory in the library constructor that
+it does not cleanup in a library destructor; even when you never call an
+API function. 
+
+We have a test for testing libglib-2.0.so for leaks and it shows that
+programs linked with libglib-2.0.so leak lots of system resources.
+
+Run:
+
+```sh
+  $ cd tests && make && ldd ./glib2
+```
+After the make/build spew we see:
+```
+        linux-vdso.so.1 (0x00007ffd5f3de000)
+        libglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007fcb9b019000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fcb9ae38000)
+        libpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007fcb9ad9e000)
+        libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fcb9acbf000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fcb9b17d000)
+```
+To see the leaks run (from tests/):
+```sh
+  $ ./valgrind_run_tests glib2
+```
+
 
 ## This totally explains what wayland is
 
@@ -32,9 +61,10 @@ See this C code
 [hello wayland](https://github.com/emersion/hello-wayland.git).
 
 We are currently developing "slate" on Debian GNU/Linux 12 (bookworm) with
-the Gnome 3 desktop.  An older version of Gnome 3 desktop was missing
-symbols needed to compile hello wayland client program without linking to
-a fuck ton of libraries.  Now I can compile and run the "hello wayland"
+the Gnome 3 desktop (as of Sept 2024 on Debian 12 with KDE plasma).  An
+older version of Gnome 3 desktop was missing symbols needed to compile
+hello wayland client program without linking to a fuck ton of libraries
+(at least 100 as I recall).  Now I can compile and run the "hello wayland"
 program with just:
 ```sh
   $ ldd ./hello-wayland
@@ -47,6 +77,7 @@ program with just:
 	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f7a8717f000)
 	/lib64/ld-linux-x86-64.so.2 (0x00007f7a873c1000)
 ```
+as you can see it just links with 6 libraries.
 
 Testing shows that it runs with just those libraries (it does not seem to
 dynamically load more libraries); see by running:
@@ -58,7 +89,10 @@ dynamically load more libraries); see by running:
 ## Testing libwayland-client.so and libffi.so for system resource leaks
 
 
-We'll add that as a test program in ./tests
+We'll add that as a test program in ./tests.  Looks like they do not leak.
+
+We have many test programs that link with lib/libslate.so which we link
+with both libwayland-client.so and libffi.so.
 
 
 On wayland sub-surfaces:

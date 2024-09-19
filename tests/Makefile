@@ -4,6 +4,7 @@ include $(root)/freetype2.make
 include $(root)/fontconfig.make
 include $(root)/pangocairo.make
 include $(root)/gobject-2.0.make
+include $(root)/glib-2.0.make
 
 
 
@@ -113,6 +114,13 @@ gobject2_SOURCES := gobject2.c ../lib/debug.c
 gobject2_LDFLAGS := $(GOBJECT2_LDFLAGS) -lm
 gobject2_CPPFLAGS := $(GOBJECT2_CFLAGS)
 endif
+
+ifneq ($(GLIB2_LDFLAGS),)
+glib2_SOURCES := glib2.c ../lib/debug.c
+glib2_LDFLAGS := $(GLIB2_LDFLAGS) -lm
+glib2_CPPFLAGS := $(GLIB2_CFLAGS)
+endif
+
 
 
 

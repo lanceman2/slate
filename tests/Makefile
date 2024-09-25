@@ -2,10 +2,12 @@ root := ..
 
 include $(root)/freetype2.make
 include $(root)/fontconfig.make
+include $(root)/cairo.make
 include $(root)/pangocairo.make
 include $(root)/gobject-2.0.make
 include $(root)/glib-2.0.make
 include $(root)/harfbuzz.make
+include $(root)/pixman-1.make
 
 
 
@@ -103,6 +105,10 @@ font_SOURCES := 130_font.c
 font_LDFLAGS := $(SL_LIB)
 font_CPPFLAGS := -D LOOP
 
+cairoDraw_SOURCES := cairoDraw.c
+cairoDraw_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS)
+
 
 ifneq ($(PANGOCAIRO_LDFLAGS),)
 pangocairo_SOURCES := pangocairo.c ../lib/debug.c
@@ -114,6 +120,12 @@ ifneq ($(GOBJECT2_LDFLAGS),)
 gobject2_SOURCES := gobject2.c
 gobject2_LDFLAGS := $(GOBJECT2_LDFLAGS)
 gobject2_CPPFLAGS := $(GOBJECT2_CFLAGS)
+endif
+
+ifneq ($(PIXMAN_LDFLAGS),)
+pixman-1_SOURCES := pixman-1.c
+pixman-1_LDFLAGS := $(PIXMAN_LDFLAGS)
+pixman-1_CPPFLAGS := $(PIXMAN_CFLAGS)
 endif
 
 ifneq ($(GLIB2_LDFLAGS),)

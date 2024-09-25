@@ -94,8 +94,33 @@ We'll add that as a test program in ./tests.  Looks like they do not leak.
 We have many test programs that link with lib/libslate.so which we link
 with both libwayland-client.so and libffi.so.
 
-
 On wayland sub-surfaces:
 https://ppaalanen.blogspot.com/2013/11/sub-surfaces-now.html
 
 
+## Testing harfbuzz for system recourse leaks
+
+Looking at
+```sh
+  $ tests/valgrind_run_tests harfbuzz
+```
+shows that programs linked with libharfbuzz depend on libglib-2.0 which
+makes this test program leak.  I guess I will not be using libharfbuzz
+with slate.
+
+ref https://harfbuzz.github.io/index.html
+
+## Cairo Drawing
+
+Looks like Cairo can do drawing for libslate.so.  It would be nice to use
+a libcairo.so that does not link with the family of X11 libraries, which
+is a relatively large number of libraries that will not be needed.
+
+It looks like the Cairo software package has meson build options to make
+it so that the built libcairo.so library file will not depend on these X11
+libraries.
+
+We could git clone https://gitlab.freedesktop.org/cairo/cairo
+
+We have a test program tests/cairoDraw that uses libslate.so with it
+being linked with libcairo.so.

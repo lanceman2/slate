@@ -7,6 +7,7 @@ root := ..
 include $(root)/freetype2.make
 include $(root)/fontconfig.make
 include $(root)/waylandclient.make
+include $(root)/cairo.make
 
 
 xdg-shell-protocol.c:
@@ -27,10 +28,11 @@ libslate.so_SOURCES :=\
  display.c\
  window.c\
  popup.c\
+ cairoDraw.c\
  findFont.c\
  font.c\
  shm.c
-libslate.so_CPPFLAGS := $(WL_CFLAGS) $(FONTCONFIG_CFLAGS)
+libslate.so_CPPFLAGS := $(WL_CFLAGS) $(FONTCONFIG_CFLAGS) $(CAIRO_CFLAGS)
 libslate.so_CFLAGS :=\
  -fvisibility=hidden\
  -DSL_EXPORT="__attribute__((visibility(\"default\"))) extern"\
@@ -38,6 +40,7 @@ libslate.so_CFLAGS :=\
 libslate.so_LDFLAGS :=\
  $(WL_LDFLAGS)\
  $(FONTCONFIG_LDFLAGS)\
+ $(CAIRO_LDFLAGS)\
  -Wl,--retain-symbols-file=retain-symbols.txt
 libslate.so: retain-symbols.txt
 

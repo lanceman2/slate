@@ -91,7 +91,7 @@ int main(void) {
     // results.
 
     // This will show if libslate.so and libwayland-client.so get
-    // unmapped.  Note: running with valgrind makes more files.
+    // unmapped.  Note: running with valgrind makes more mapped files.
     //
     Wait("Before dlclose()");
 

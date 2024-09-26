@@ -1,13 +1,13 @@
 root := ..
 
-include $(root)/freetype2.make
-include $(root)/fontconfig.make
-include $(root)/cairo.make
-include $(root)/pangocairo.make
-include $(root)/gobject-2.0.make
-include $(root)/glib-2.0.make
-include $(root)/harfbuzz.make
-include $(root)/pixman-1.make
+include $(root)/pkg-freetype2.make
+include $(root)/pkg-fontconfig.make
+include $(root)/pkg-cairo.make
+include $(root)/pkg-pangocairo.make
+include $(root)/pkg-gobject-2.0.make
+include $(root)/pkg-glib-2.0.make
+include $(root)/pkg-harfbuzz.make
+include $(root)/pkg-pixman-1.make
 
 
 

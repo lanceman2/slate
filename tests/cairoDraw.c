@@ -21,29 +21,13 @@ int draw(struct SlWindow *win, uint32_t *pixels,
             (unsigned char *) pixels, CAIRO_FORMAT_ARGB32,
             w, h, stride);
 
-#if 0
-    const int NUM = 20;
-
-    cairo_t *c[NUM];
-    for(int i = 0; i<NUM; ++i) {
-        c[i] = cairo_create(surface);
-        ERROR("cr=%p", c[i]);
-        ASSERT(c[i]);
-    }
-
-    for(int i = 0; i<NUM; ++i)
-        cairo_destroy(c[i]);
-#endif
-
     cairo_t *cr = cairo_create(surface);
-ERROR("cr=%p", cr);
     cairo_surface_destroy(surface);
+    // cr will keep a reference to surface.
+
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-
     cairo_set_source_rgba(cr, 0, 0.9, 0, 0.4);
-
     cairo_paint(cr);
-
     cairo_destroy(cr);
 
     return 1; // stop calling
@@ -74,18 +58,18 @@ int main(void) {
     while(slDisplay_dispatch(d));
 #endif
 
-    // We need to make sure that libslate.so is not using any
-    // part of libcairo.so.  slDisplay_destroy(d) will cleanup
-    // its use of libcairo.so, if any exists.
-    //
-    // TODO: Maybe add a global slate destructor, for the case
-    // when users have many slate displays.
-    //
-    slDisplay_destroy(d);
 
     // If we make it here it does not seem to crash.
     DSPEW("DONE");
 
+    // We need to make sure that libslate.so is not using any
+    // part of libcairo.so.  slDisplay_destroy(d) will cleanup
+    // its use of libcairo.so, if any exists.
+    //
+    // TODO: Maybe add a functoin like the global slate destructor, for
+    // the case when users have many slate displays.
+    //
+    slDisplay_destroy(d);
 
     // This is fucking AWESOME.  Cairo has a robust memory cleanup method:
     // in the function cairo_debug_reset_static_data().  I was working on

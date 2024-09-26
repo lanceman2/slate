@@ -74,7 +74,14 @@ int main(void) {
     while(slDisplay_dispatch(d));
 #endif
 
-    // Use automatic cleanup from the libslate.so destructor.
+    // We need to make sure that libslate.so is not using any
+    // part of libcairo.so.  slDisplay_destroy(d) will cleanup
+    // its use of libcairo.so, if any exists.
+    //
+    // TODO: Maybe add a global slate destructor, for the case
+    // when users have many slate displays.
+    //
+    slDisplay_destroy(d);
 
     // If we make it here it does not seem to crash.
     DSPEW("DONE");
@@ -92,6 +99,8 @@ int main(void) {
     // having a computer.  I just have to cleanup my cairo code myself,
     // before calling this; not like I did with the libslate.so library
     // destructor (which cleans all things slate).
+    //
+    // Now libslate.so should not be using libcairo.so either.
     //
     cairo_debug_reset_static_data();
 

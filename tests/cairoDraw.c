@@ -17,19 +17,74 @@ static
 int draw(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
+    ASSERT(stride % 4 == 0);
+
+    stride /= 4; // in number of 4 bytes ints
+
     cairo_surface_t *surface = cairo_image_surface_create_for_data(
             (unsigned char *) pixels, CAIRO_FORMAT_ARGB32,
-            w, h, stride);
+            w, h, stride*4);
 
     cairo_t *cr = cairo_create(surface);
     cairo_surface_destroy(surface);
     // cr will keep a reference to surface.
 
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cr, 0, 0.9, 0, 0.4);
+    cairo_set_source_rgba(cr, 0, 0.9, 0, 0.94);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+    // Now the surface is destroyed too.
+
+    // Just messing around.  Seeing if I can make the cairo surface a sub
+    // rectangle of the window, at x=w/8,y=h/4, width=w/2 and height=h/2
+    surface = cairo_image_surface_create_for_data(
+            (unsigned char *) (pixels + w/8 + (h/4)*stride),
+            CAIRO_FORMAT_ARGB32, w/2, h/2, stride*4);
+    cr = cairo_create(surface);
+    cairo_surface_destroy(surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0.9, 0.0, 0.7, 0.4);
     cairo_paint(cr);
     cairo_destroy(cr);
 
+    // Again
+    surface = cairo_image_surface_create_for_data(
+            (unsigned char *) (pixels + w/4 + (h/8)*stride),
+            CAIRO_FORMAT_ARGB32, w/3, h/2, stride*4);
+    cr = cairo_create(surface);
+    cairo_surface_destroy(surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.7, 0.8);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+
+    // Again again ...
+    surface = cairo_image_surface_create_for_data(
+            (unsigned char *) (pixels + w/5 + (h/20)*stride),
+            CAIRO_FORMAT_ARGB32, w/3, h/20, stride*4);
+    cr = cairo_create(surface);
+    cairo_surface_destroy(surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0.0, 1.0, 1.0, 0.0);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+
+    // So we can control the cairo drawing on sub rectangles in the
+    // windows.  A widget can be a sub rectangles in the windows.
+    // The widget will only know that it has a surface with a given
+    // width and height.
+    //
+    // If we choose to we can let the widget have a start pixel, width,
+    // height, and stride; and let the widget draw on that how ever it
+    // wants to.
+
+    // Make a another translucent rectangular hole.  This time without
+    // cairo.
+    for(uint32_t *pix = pixels + 8*h*stride/10; 
+            pix < pixels + 9*h*stride/10; pix += stride)
+        for(uint32_t *p = pix + w/3; p < pix + 2*w/3; ++p)
+            *p = 0x209090B0; // a r g b
+ 
     return 1; // stop calling
 
     //return 0; //continue to calling at every frame, like at 60 Hz.
@@ -66,7 +121,7 @@ int main(void) {
     // part of libcairo.so.  slDisplay_destroy(d) will cleanup
     // its use of libcairo.so, if any exists.
     //
-    // TODO: Maybe add a functoin like the global slate destructor, for
+    // TODO: Maybe add a function like the global slate destructor, for
     // the case when users have many slate displays.
     //
     slDisplay_destroy(d);
@@ -84,7 +139,7 @@ int main(void) {
     // before calling this; not like I did with the libslate.so library
     // destructor (which cleans all things slate).
     //
-    // Now libslate.so should not be using libcairo.so either.
+    // At this time, libslate.so should not be using libcairo.so either.
     //
     cairo_debug_reset_static_data();
 

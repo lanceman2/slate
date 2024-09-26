@@ -107,7 +107,13 @@ font_CPPFLAGS := -D LOOP
 
 cairoDraw_SOURCES := cairoDraw.c
 cairoDraw_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
-cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS)
+cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS) -DLOOP
+
+# non looping version of cairoDraw
+140_cairoDraw_SOURCES := cairoDraw.c
+140_cairoDraw_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+140_cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS)
+
 
 
 ifneq ($(PANGOCAIRO_LDFLAGS),)

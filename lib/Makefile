@@ -37,6 +37,9 @@ libslate.so_CFLAGS :=\
  -fvisibility=hidden\
  -DSL_EXPORT="__attribute__((visibility(\"default\"))) extern"\
  -DEXPORT="SL_EXPORT"
+# good read:
+#   https://amir.rachum.com/shared-libraries/
+#
 # The order of these LDFLAGS can matter.  We put CAIRO_LDFLAGS before
 # FONTCONFIG_LDFLAGS because we needed the libcairo.so to be from a
 # version we compiled without X11 stuff.  FONTCONFIG_LDFLAGS added a

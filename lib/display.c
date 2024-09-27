@@ -94,15 +94,16 @@ static void leave(void *data, struct wl_pointer *wl_pointer,
         uint32_t serial, struct wl_surface *wl_surface) {
     
     DASSERT(pointerWindow);
-    DASSERT((void *) pointerWindow == wl_surface_get_user_data(wl_surface));
+    DASSERT((void *) pointerWindow ==
+            wl_surface_get_user_data(wl_surface));
     pointerWindow = 0;
 
     DSPEW();
 }
 
 static void motion(void *, struct wl_pointer *, uint32_t,
-        wl_fixed_t,  wl_fixed_t) {
-    //DSPEW();
+        wl_fixed_t x,  wl_fixed_t y) {
+    //DSPEW("%lg %lg", wl_fixed_to_double(x), wl_fixed_to_double(y));
 }
 
 static void button(void *, struct wl_pointer *wl_pointer,
@@ -429,7 +430,7 @@ void slDisplay_destroy(struct SlDisplay *d) {
 
     // Destroy all slate toplevel windows that are owned by this display (d).
     while(d->lastToplevel) {
-        DASSERT(d->lastToplevel->window.type == SlWindowType_topLevel);
+        DASSERT(d->lastToplevel->window.surface.type == SlSurfaceType_topLevel);
         DASSERT(d->lastToplevel->window.parent == 0);
         _slWindow_destroy(d, &d->lastToplevel->window);
     }

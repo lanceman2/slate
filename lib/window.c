@@ -15,6 +15,14 @@
 #include "shm.h"
 
 
+struct SlSurface *slWindow_getSurface(struct SlWindow *window) {
+
+    ASSERT(window->surface.type);
+    ASSERT(window->surface.type < SlSurfaceType_widget);
+    return &window->surface;
+}
+
+
 static bool AddFrameListener(struct SlWindow *win);
 
 static
@@ -51,18 +59,19 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->draw);
     DASSERT(win->wl_surface);
     DASSERT(win->buffer);
-    DASSERT(win->width);
-    DASSERT(win->height);
+    DASSERT(win->surface.width);
+    DASSERT(win->surface.height);
     DASSERT(win->wl_callback == 0);
 
     // Call the libslate.so users draw callback.  This draw() function
-    // can set the win->pixels pixel value to what ever it wants to.
+    // can set the win->surface.pixels pixel value to what ever it wants to.
     // These values will not be seen until the compositor process
     // decides to read these pixels from the shared memory.  In this
-    // process the shared memory is at virtual address win->pixels.
-    
-    int ret = win->draw(win, win->pixels, win->width, win->height,
-                win->width*4/*stride in bytes*/);
+    // process the shared memory is at virtual address win->surface.pixels.
+
+    int ret = win->draw(win, win->surface.pixels,
+            win->surface.width, win->surface.height,
+            win->surface.width*4/*stride in bytes*/);
 
     switch(ret) {
         case 0:
@@ -91,18 +100,19 @@ static inline void free_buffer(struct SlWindow *win) {
         win->buffer = 0;
     }
 
-    if(win->pixels) {
-        DASSERT(win->width);
-        DASSERT(win->height);
+    if(win->surface.pixels) {
+        DASSERT(win->surface.width);
+        DASSERT(win->surface.height);
         // TODO: Is it (shared memory size) always w*h*((4))??
-        if(munmap(win->pixels, win->width*win->height*4)) {
-            ERROR("munmap(%p,%d) failed", win->pixels,
-                    win->width*win->height*4);
+        if(munmap(win->surface.pixels,
+                    win->surface.width*win->surface.height*4)) {
+            ERROR("munmap(%p,%d) failed", win->surface.pixels,
+                    win->surface.width*win->surface.height*4);
             // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%d) failed", win->pixels,
-                win->width*win->height*4);
+            DASSERT(0, "munmap(%p,%d) failed", win->surface.pixels,
+                win->surface.width*win->surface.height*4);
         }
-        win->pixels = 0;
+        win->surface.pixels = 0;
     }
 }
 
@@ -111,18 +121,18 @@ static inline void free_buffer(struct SlWindow *win) {
 static inline bool CreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
-    DASSERT(win->width > 0);
-    DASSERT(win->height > 0);
+    DASSERT(win->surface.width > 0);
+    DASSERT(win->surface.height > 0);
 
     // This does nothing if there is no buffer stuff yet.
     free_buffer(win);
 
-    DASSERT(!win->pixels);
+    DASSERT(!win->surface.pixels);
     DASSERT(!win->buffer);
 
 
-    int stride = win->width * 4;
-    size_t size = stride * win->height;
+    int stride = win->surface.width * 4;
+    size_t size = stride * win->surface.height;
 
     int fd = create_shm_file(size);
 
@@ -132,9 +142,9 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Map the (pixels) shared memory file to this processes virtual
     // address space.
-    win->pixels = mmap(0, size,
+    win->surface.pixels = mmap(0, size,
             PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    if(win->pixels == MAP_FAILED) {
+    if(win->surface.pixels == MAP_FAILED) {
         ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
                 "MAP_SHARED,fd=%d,0) failed", size, fd);
 	close(fd);
@@ -152,25 +162,25 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     if(!pool) {
         ERROR("wl_shm_create_pool() failed");
         // TODO: What if this fails?:
-        ASSERT(munmap(win->pixels, size) == 0);
+        ASSERT(munmap(win->surface.pixels, size) == 0);
         close(fd);
         return true;
     }
 
     win->buffer = wl_shm_pool_create_buffer(pool, 0,
-            win->width, win->height,
+            win->surface.width, win->surface.height,
             stride, WL_SHM_FORMAT_ARGB8888);
     if(!win->buffer) {
         ERROR("wl_shm_pool_create_buffer() failed");
         wl_shm_pool_destroy(pool);
         // TODO: What if this fails?:
-        ASSERT(munmap(win->pixels, size) == 0);
+        ASSERT(munmap(win->surface.pixels, size) == 0);
         close(fd);
         return true;
     }
 
     // We have what we needed.  Inter-process shared memory at process
-    // virtual address win->pixels.
+    // virtual address win->surface.pixels.
     wl_shm_pool_destroy(pool);
 
     // Now that we've mapped the file and created the wl_buffer, we no
@@ -179,7 +189,7 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
-    memset(win->pixels, 250, size);
+    memset(win->surface.pixels, 250, size);
 
     return false;
 }
@@ -238,7 +248,7 @@ static inline void FreeToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 
     DASSERT(d);
     DASSERT(d == t->display);
-    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(t->window.surface.type == SlSurfaceType_topLevel);
     DASSERT(t->window.parent == 0);
 
     if(t->xdg_toplevel)
@@ -278,8 +288,8 @@ void AddChild(struct SlToplevel *t, struct SlWindow *win) {
 
     DASSERT(t);
     DASSERT(win);
-    DASSERT(t->window.type == SlWindowType_topLevel);
-    DASSERT(win->type == SlWindowType_popup);
+    DASSERT(t->window.surface.type == SlSurfaceType_topLevel);
+    DASSERT(win->surface.type == SlSurfaceType_popup);
     DASSERT(!win->prev);
     DASSERT(!win->next);
 
@@ -303,7 +313,7 @@ void RemoveChild(struct SlToplevel *t, struct SlWindow *win) {
 
     DASSERT(t);
     DASSERT(win);
-    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(t->window.surface.type == SlSurfaceType_topLevel);
 
     if(win->prev) {
         DASSERT(win != t->firstChild);
@@ -333,11 +343,11 @@ void _slWindow_destroy(struct SlDisplay *d,
     // Cleanup wayland stuff for this window in reverse order of
     // construction.  (So I think...)
 
-    switch(win->type) {
+    switch(win->surface.type) {
 
-        case SlWindowType_topLevel:
+        case SlSurfaceType_topLevel:
             break;
-        case SlWindowType_popup:
+        case SlSurfaceType_popup:
         {
             struct SlPopup *p = (void *) win;
             if(p->xdg_popup) {
@@ -351,7 +361,8 @@ void _slWindow_destroy(struct SlDisplay *d,
             break;
         }
         default:
-            ASSERT(0, "WRITE CODE to Free window type %d", win->type);
+            ASSERT(0, "WRITE CODE to Free window type %d",
+                    win->surface.type);
     }
 
 
@@ -369,25 +380,27 @@ void _slWindow_destroy(struct SlDisplay *d,
     if(win->wl_surface)
         wl_surface_destroy(win->wl_surface);
 
-    //DSPEW("Cleaning up win->type=%d", win->type);
+    //DSPEW("Cleaning up win->surface.type=%d", win->surface.type);
 
-    switch(win->type) {
+    switch(win->surface.type) {
 
-        case SlWindowType_topLevel:
+        case SlSurfaceType_topLevel:
             while(((struct SlToplevel *)win)->lastChild) {
-                DASSERT(((struct SlToplevel *)win)->lastChild->type ==
-                        SlWindowType_popup);
+                DASSERT(((struct SlToplevel *)win
+                            )->lastChild->surface.type ==
+                        SlSurfaceType_popup);
                 _slWindow_destroy(d, ((struct SlToplevel *)win)->lastChild);
             }
             FreeToplevel(d, (void *) win);
             break;
-        case SlWindowType_popup:
+        case SlSurfaceType_popup:
             RemoveChild(((struct SlPopup *)win)->parent, win);
             memset(win, 0, sizeof(struct SlPopup));
             free(win);
             break;
         default:
-            ASSERT(0, "WRITE CODE to Free window type %d", win->type);
+            ASSERT(0, "WRITE CODE to Free window surface type %d",
+                    win->surface.type);
     }
 }
 
@@ -425,8 +438,8 @@ static void frame_new(struct SlWindow *win,
     DASSERT(win->wl_surface);
     DASSERT(cb);
     DASSERT(cb == win->wl_callback);
-    DASSERT(win->width > 0);
-    DASSERT(win->height > 0);
+    DASSERT(win->surface.width > 0);
+    DASSERT(win->surface.height > 0);
 
     // TODO: extra line of code not needed after the first frame_new()
     // call.
@@ -515,7 +528,7 @@ static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 
     DASSERT(d);
     DASSERT(t->display = d);
-    DASSERT(t->window.type == SlWindowType_topLevel);
+    DASSERT(t->window.surface.type == SlSurfaceType_topLevel);
     DASSERT(t->window.parent == 0);
 
     // Add t to the displays toplevel windows list:
@@ -534,7 +547,7 @@ static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
 
 
 // Creates the generic SlWindow before it's made into a particular
-// slate type of window like toplevel, popup, sub, fullscreen (???).
+// slate surface type of window like toplevel, popup, sub, fullscreen (???).
 //
 // Return true on error.
 bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
@@ -564,8 +577,10 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     ASSERT(w > 0);
     ASSERT(h > 0);
 
-    win->width = w;
-    win->height = h;
+    win->surface.width = w;
+    win->surface.height = h;
+    // stride consistent with the width and pixel size of 4 bytes.
+    win->surface.stride = 4 * w;
     win->x = x;
     win->y = y;
     win->draw = draw;
@@ -605,7 +620,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     DASSERT(win->buffer);
     DASSERT(win->wl_surface);
-    DASSERT(win->pixels);
+    DASSERT(win->surface.pixels);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -686,7 +701,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 
     struct SlWindow *win = &t->window;
     t->display = d;
-    win->type = SlWindowType_topLevel;
+    win->surface.type = SlSurfaceType_topLevel;
 
 
     CHECK(pthread_mutex_lock(&d->mutex));
@@ -736,7 +751,7 @@ void slWindow_setDraw(struct SlWindow *win,
     DASSERT(win);
     DASSERT(win->wl_surface);
     DASSERT(win->configured);
-    DASSERT(win->type == SlWindowType_topLevel, "WRITE MORE CODE HERE");
+    DASSERT(win->surface.type == SlSurfaceType_topLevel, "WRITE MORE CODE HERE");
 
     win->draw = draw;
 
@@ -750,7 +765,7 @@ void slWindow_setDraw(struct SlWindow *win,
 void slWindow_destroy(struct SlWindow *w) {
 
     DASSERT(w);
-    DASSERT(w->type == SlWindowType_topLevel, "WRITE MORE CODE");
+    DASSERT(w->surface.type == SlSurfaceType_topLevel, "WRITE MORE CODE");
     struct SlDisplay *d = ((struct SlToplevel *) w)->display;
     DASSERT(d);
 

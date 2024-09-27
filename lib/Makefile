@@ -31,7 +31,8 @@ libslate.so_SOURCES :=\
  cairoDraw.c\
  findFont.c\
  font.c\
- shm.c
+ shm.c\
+ widget.c
 libslate.so_CPPFLAGS := $(WL_CFLAGS) $(CAIRO_CFLAGS) $(FONTCONFIG_CFLAGS)
 libslate.so_CFLAGS :=\
  -fvisibility=hidden\

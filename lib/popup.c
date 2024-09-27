@@ -66,7 +66,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
 
     DASSERT(xdg_wm_base);
     DASSERT(parent);
-    ASSERT(parent->type == SlWindowType_topLevel);
+    ASSERT(parent->surface.type == SlSurfaceType_topLevel);
     struct SlToplevel *t = (void *) parent;
     struct SlDisplay *d = t->display;
     DASSERT(d);
@@ -76,7 +76,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
 
     struct SlWindow *win = &p->window;
     p->parent = (void *) parent;
-    win->type = SlWindowType_popup;
+    win->surface.type = SlSurfaceType_popup;
 
 
     CHECK(pthread_mutex_lock(&d->mutex));
@@ -96,13 +96,13 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         goto fail;
     }
 
-    DASSERT(win->width > 0);
-    DASSERT(win->height > 0);
+    DASSERT(win->surface.width > 0);
+    DASSERT(win->surface.height > 0);
 
     xdg_positioner_set_size(p->xdg_positioner,
-            win->width, win->height);
+            win->surface.width, win->surface.height);
     xdg_positioner_set_anchor_rect(p->xdg_positioner,
-            win->x, win->y, win->width, win->height);
+            win->x, win->y, win->surface.width, win->surface.height);
 
     p->xdg_popup = xdg_surface_get_popup(win->xdg_surface,
             parent->xdg_surface, p->xdg_positioner);

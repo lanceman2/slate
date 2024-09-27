@@ -45,8 +45,32 @@ extern "C" {
 
 struct SlDisplay;
 struct SlWindow;
+struct SlWidget;
+struct SlSurface;
 
 #define SLATE_PIXEL_SIZE   (4)
+
+
+// Widget packing gravity
+enum SlGravity {
+    // T Top, B Bottom, L Left, R Right
+    SlGravity_None = 0, // For non-container widgets
+    SlGravity_TL,
+    SlGravity_TR,
+    SlGravity_BL,
+    SlGravity_BR
+};
+
+
+// Widgets can be greedy for different kinds of space.
+enum SlGreed {
+    // H Horizontal first bit, V Vertical second bit
+    SlGreed_None = 00, // The widget is not greedy for any space
+    SlGreed_H    = 01, // The widget is greedy for Horizontal space
+    SlGreed_V    = 02, // The widget is greedy for Vertical space
+    SlGreed_HV   = (01 & 02), // The widget is greedy for all 2D space
+    SlGreed_VH   = (01 & 02)  // The widget is greedy for all 2D space
+};
 
 
 // The function symbols that the libslate.so library provides:
@@ -67,11 +91,79 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
+
+// This not only defines the widget, it also packs it too.
+//
+// This is very limited, but that's the point: defining widgets with less
+// code.  We try to create a slate widget with one slate API (application
+// programming interface) function call.
+//
+// TODO: Add other event handlers, not just draw().
+//
+// Q: Are slate widgets given position, width, and height in units of root
+// window pixels?  We could have widgets drawn across factions of a pixel
+// via drawing with some kind of antialiasing.
+//
+// Cairo has surfaces that have discrete pixels.  It may not be obvious
+// how to blend cairo surface edges between widget.  Lets see, if we give
+// widgets a full pixel to draw on for all the factions of a pixel.  Then
+// the parent widget will blend all the extra vertical or horizontal
+// edges, using a weighted (by pixel faction size) average of the color
+// for the widget edges that are on non-integer multiples of a pixel.  The
+// child widget could be told that it has a "factional" size, or should it
+// just think it has that extra pixel piece?
+//
+// Also, we need to consider that cases when we do not use cairo to draw.
+//
+// It looks like GTK (and Qt) does not consider having widgets with
+// non-discrete pixel sizes.
+//
+// Looks like on the wayland compositor that I'm using the pointer motion
+// event pass a fixed point number that appears to never convert to a
+// floating point double that has a fractional part.  That could just be
+// because of the nature of my desktop display screen.
+//
+// Okay, putting my foot down, I decree: slate widgets are rectangles of a
+// discrete number of pixels.  I guess it's zero pixels when the widget is
+// squished.
+//
+// Widgets are showing or hidden.  Since that, we need a initial state of
+// "visibility" when the widget is created.
+//
+SL_EXPORT struct SlWidget *slWidget_create(
+        // "parent" is either a SlWindow or a SlWidget.
+        struct SlSurface *parent,
+        // The width and height that the widget draw() code considers
+        // optimal.  It may not get this from the parent (and/or window).
+        uint32_t width, uint32_t height,
+        /* Children of this returned widget feel this gravity.
+         * It's like the gravity in a room in 2D space.
+         * Leaf widgets (not container) have no gravity
+         * (SlGravity_None).
+         * */
+        enum SlGravity gravity,
+        /* This returned widget is wanting this kind of space. */
+        enum SlGreed greed,
+        int (*draw)(struct SlWindow *win, uint32_t *pixels,
+            uint32_t w, uint32_t h, uint32_t stride));
+
+
+// Should these next to functions be inline static?
+SL_EXPORT
+struct SlSurface *slWidget_getSurface(struct SlWidget *widget);
+//
+SL_EXPORT
+struct SlSurface *slWindow_getSurface(struct SlWindow *window);
+
+
 // TODO: remove this interface.
 SL_EXPORT char *slFindFont(const char *exp);
 
 
+
 // libfreetype.so wrapper functions.
+//
+// TODO: Make it for widgets (not just windows).
 //
 SL_EXPORT bool slWindow_DrawText(struct SlWindow *win,
         const char *text, const char *font,

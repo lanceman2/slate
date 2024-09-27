@@ -5,18 +5,55 @@
 //   sub (has a wl_subsurface)
 //   fullscreen
 
-enum SlWindowType {
+enum SlSurfaceType {
 
-    SlWindowType_topLevel = 1, // From xdg_surface_get_toplevel()
-    SlWindowType_popup, // From wl_shell_surface_set_popup()
-    SlWindowType_sub, // From wl_subcompositor_get_subsurface()
-    SlWindowType_fullscreen // ???
+    // First window types:
+    SlSurfaceType_topLevel = 1, // From xdg_surface_get_toplevel()
+    SlSurfaceType_popup, // From wl_shell_surface_set_popup()
+    SlSurfaceType_sub, // From wl_subcompositor_get_subsurface()
+    //SlSurfaceType_fullscreen, // ??? fullscreen
+
+    SlSurfaceType_widget // not a window
+};
+
+
+// Surface is a Window or a Widget.
+struct SlSurface {
+
+    enum SlSurfaceType type;
+
+    // "pixels" points to where the inter-process shared memory pixels
+    // start for the case of a window, and "pixels" points to the top left
+    // corner of the rectangle for a widget.
+    uint32_t *pixels;
+
+    uint32_t width, height; // in pixels
+
+    // "stride" is the distance in bytes from positions X,Y to get to the
+    // next (X, Y+1) position at a same X value.  It's used to loop back
+    // to the next Y row in the pixels data.
+    //
+    // Think of X position as increasing as you move along (increasing X)
+    // a row.
+    //
+    // "stride" is 4*width for a window because each pixel is 4 bytes in
+    // size and there is no memory padding at end of a row.
+    //
+    // what-does-stride-mean: How long with this URL last?:
+    // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
+    //
+    uint32_t stride;
+
+    // We keep a tree of surfaces starting at a window
+    struct SlSurface *parent;
+    struct SlSurface *firstChild, *lastChild;
 };
 
 
 struct SlWindow {
 
-    enum SlWindowType type;
+    // inherit slate surface
+    struct SlSurface surface;
 
     // The parent owns this object.  TopLevel windows have
     // parent=0.
@@ -34,16 +71,12 @@ struct SlWindow {
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
 
-    // This is where the inter process shared memory pixels start:
-    uint32_t *pixels;
-
     // For the doubly linked list of children in the toplevel
     // (firstChild, lastChild) windows.
     struct SlWindow *prev, *next;
 
     bool configured, open, framed;
 
-    uint32_t width, height; // in pixels
     int32_t x, y;
 };
 

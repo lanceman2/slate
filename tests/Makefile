@@ -114,6 +114,14 @@ cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS) -DLOOP
 140_cairoDraw_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
 140_cairoDraw_CPPFLAGS := $(CAIRO_CFLAGS)
 
+widget_SOURCES := widget.c
+widget_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+widget_CPPFLAGS := $(CAIRO_CFLAGS) -DLOOP
+
+# non looping version of widget
+160_widget_SOURCES := widget.c
+160_widget_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+160_widget_CPPFLAGS := $(CAIRO_CFLAGS)
 
 
 ifneq ($(PANGOCAIRO_LDFLAGS),)

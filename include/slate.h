@@ -170,6 +170,11 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 // get, or act (in some way) with these added widget (and window)
 // parameters.
 //
+// Q: Should there be a automatic widget/window geometry saving/loading
+// feature?  A dot file with an slate API user application namespace.
+// Maybe on by default, with a default auto-generated application
+// namespace.
+//
 // Widget builder function.
 //
 SL_EXPORT struct SlWidget *slWidget_create(
@@ -187,7 +192,7 @@ SL_EXPORT struct SlWidget *slWidget_create(
         enum SlGravity gravity,
         /* This returned widget is wanting this kind of 2D space. */
         enum SlGreed greed,
-        uint32_t backgroundColor,
+        uint32_t backgroundColor, // A R G B with one byte for each one.
         // TODO: stuff like leftBorderWidth
         // TODO: CSS like interfaces
         // The idea of padding is internal to the widget (or window)
@@ -200,7 +205,7 @@ SL_EXPORT struct SlWidget *slWidget_create(
         bool hide);
 
 
-// Should these next to functions be inline static?
+// Should these next two functions be inline static?
 SL_EXPORT
 struct SlSurface *slWidget_getSurface(struct SlWidget *widget);
 //

@@ -11,3 +11,6 @@ struct SlWidget {
     enum SlGreed greed;
 };
 
+
+extern void DestroyWidget(struct SlWidget *widget);
+

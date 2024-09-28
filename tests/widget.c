@@ -33,7 +33,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     // cr will keep a reference to surface.
 
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cr, 0, 0.9, 0, 0.94);
+    cairo_set_source_rgba(cr, 0, 0.9, 0.9, 0.8);
     cairo_paint(cr);
     cairo_destroy(cr);
  
@@ -58,6 +58,13 @@ int main(void) {
     struct SlWindow *win = slWindow_createToplevel(d,
             600, 600, 100, 10, draw/*draw()*/);
     if(!win) return 1; // fail
+
+    slWidget_create(slWindow_getSurface(win), 200, 100,
+            SlGravity_None/*SlGravity_None => non-container*/,
+            SlGreed_None,
+            0x20F0F000/* background color*/,
+            0/* borderWidth*/,
+            draw, true/*hide*/);
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
 

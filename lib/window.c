@@ -117,7 +117,7 @@ static inline void free_buffer(struct SlWindow *win) {
 }
 
 
-// This creates struct SlWindow:: pixels, buffer, 
+// This creates struct SlWindow:: pixels, and buffer.
 static inline bool CreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);

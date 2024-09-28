@@ -476,7 +476,7 @@ void slDisplay_destroy(struct SlDisplay *d) {
 
 
 #if 0 // We may need this.
-static void __attribute__((constructor)) create(void) {
+static void __attribute__((constructor)) constructor(void) {
 
     DSPEW();
 }

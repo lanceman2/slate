@@ -186,7 +186,7 @@ SL_EXPORT struct SlWidget *slWidget_create(
         uint32_t width, uint32_t height,
         /* Children of this returned widget feel this gravity.
          * It's like the gravity in a room in 2D space.
-         * Leaf widgets (not container) have no gravity
+         * Leaf widgets (non-container) have no gravity
          * (SlGravity_None).
          * */
         enum SlGravity gravity,
@@ -220,7 +220,7 @@ SL_EXPORT char *slFindFont(const char *exp);
 
 // libfreetype.so wrapper functions.
 //
-// TODO: Make it for widgets (not just windows).
+// TODO: Make it for widgets too (not just windows).
 //
 SL_EXPORT bool slWindow_DrawText(struct SlWindow *win,
         const char *text, const char *font,

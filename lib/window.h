@@ -23,6 +23,15 @@ struct SlSurface {
 
     enum SlSurfaceType type;
 
+    // We keep a linked list (tree like) graph of surfaces starting at a
+    // window with parent == 0.  The top level parent windows are owned by
+    // a display.  Displays are owned by a static global list of displays
+    // in display.c.
+    //
+    struct SlSurface *parent;
+    struct SlSurface *firstChild, *lastChild;
+    struct SlSurface *nextSibling, *prevSibling;
+
     // Like the direction of a gravitational field the in this surface
     // area.  This "gravity" effects how would be child widgets are packed
     // inside this parent surface.  "gravity" is 0 for a surface that
@@ -51,11 +60,6 @@ struct SlSurface {
     //
     uint32_t stride;
 
-    // We keep a linked list (tree like) graph of surfaces starting at a
-    // window with parent == 0.
-    struct SlSurface *parent;
-    struct SlSurface *firstChild, *lastChild;
-    struct SlSurface *nextSibling, *prevSibling;
 
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);

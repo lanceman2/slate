@@ -6,11 +6,12 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "../include/slate.h"
+
 #include "font.h"
 #include "debug.h"
 #include "window.h"
 
-#include "../include/slate.h"
 
 
 static uint32_t isInitCount = 0;

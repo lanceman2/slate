@@ -3,7 +3,7 @@
 //   toplevel
 //   popup
 //   sub (has a wl_subsurface)
-//   fullscreen
+//   fullscreen???
 
 enum SlSurfaceType {
 
@@ -17,10 +17,17 @@ enum SlSurfaceType {
 };
 
 
-// Surface is a Window or a Widget.
+// A Window or a Widget are a Surface.
+//
 struct SlSurface {
 
     enum SlSurfaceType type;
+
+    // Like the direction of a gravitational field the in this surface
+    // area.  This "gravity" effects how would be child widgets are packed
+    // inside this parent surface.  "gravity" is 0 for a surface that
+    // cannot have children.
+    enum SlGravity gravity;
 
     // "pixels" points to where the inter-process shared memory pixels
     // start for the case of a window, and "pixels" points to the top left
@@ -44,9 +51,14 @@ struct SlSurface {
     //
     uint32_t stride;
 
-    // We keep a tree of surfaces starting at a window
+    // We keep a linked list (tree like) graph of surfaces starting at a
+    // window with parent == 0.
     struct SlSurface *parent;
     struct SlSurface *firstChild, *lastChild;
+    struct SlSurface *nextSibling, *prevSibling;
+
+    int (*draw)(struct SlWindow *win, uint32_t *pixels,
+            uint32_t w, uint32_t h, uint32_t stride);
 };
 
 
@@ -67,9 +79,6 @@ struct SlWindow {
     struct wl_buffer *buffer;
 
     struct wl_callback *wl_callback;
-
-    int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride);
 
     // For the doubly linked list of children in the toplevel
     // (firstChild, lastChild) windows.

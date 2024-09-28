@@ -51,18 +51,47 @@ struct SlSurface;
 #define SLATE_PIXEL_SIZE   (4)
 
 
-// Widget packing gravity
+// Child widget packing gravity (for lack of a better word)
+//
+// Is there a "field/branch" in mathematics that we can know that will
+// give use a more optimal way to parametrise widget rectangle packing?
+// We need to keep in mind that our rectangles can grown and shrink as
+// needed to make the resulting window fully packed (with no gaps).
+//
+// Studying the behavior of gvim (the program) with changing multiple edit
+// views is very helpful in studying widget containerization.  Like for
+// example how it slits the view into two sized views any time a view is
+// split.  And, what happens when a view is removed from in between views.
+// And, what happen when a view (widget) border is moved when there are a
+// lot of views in a large grid of views.
+//
 enum SlGravity {
+
+    // SlGravity is a attribute of a widget container, be it a widget or
+    // window.
+
     // T Top, B Bottom, L Left, R Right
-    SlGravity_None = 0, // For non-container widgets
-    SlGravity_TL,
-    SlGravity_TR,
-    SlGravity_BL,
-    SlGravity_BR
+    SlGravity_None = 0, // For non-container widgets or windows
+
+    // Vertically column aligning child widgets
+    SlGravity_TB, // child widgets float/align top to bottom
+    SlGravity_BT, // child widgets float/align bottom to top
+
+    // Horizontally row aligning child widgets
+    SlGravity_LR, // child widgets float/align left to right
+    SlGravity_RL  // child widgets float/align right to left
 };
 
 
 // Widgets can be greedy for different kinds of space.
+// The greedy widget will take the space it can get, but it has
+// to share that space with other sibling greedy widgets.
+//
+// Q: If not no children in the tree are greedy in X (or Y too), then does
+// that mean that the window will not be expandable in the X (Y)
+// direction?  I'm thinking the answer is no; but there may be a need to
+// have the idea of a windows natural (X and Y) size for this case.
+//
 enum SlGreed {
     // H Horizontal first bit, V Vertical second bit
     SlGreed_None = 00, // The widget is not greedy for any space
@@ -105,8 +134,8 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 // via drawing with some kind of antialiasing.
 //
 // Cairo has surfaces that have discrete pixels.  It may not be obvious
-// how to blend cairo surface edges between widget.  Lets see, if we give
-// widgets a full pixel to draw on for all the factions of a pixel.  Then
+// how to blend cairo surface edges between widgets.  Lets see, if we give
+// widgets a full pixel to draw on for all the factions of a pixel; then
 // the parent widget will blend all the extra vertical or horizontal
 // edges, using a weighted (by pixel faction size) average of the color
 // for the widget edges that are on non-integer multiples of a pixel.  The
@@ -116,7 +145,7 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 // Also, we need to consider that cases when we do not use cairo to draw.
 //
 // It looks like GTK (and Qt) does not consider having widgets with
-// non-discrete pixel sizes.
+// non-discrete (fractional) pixel sizes.
 //
 // Looks like on the wayland compositor that I'm using the pointer motion
 // event pass a fixed point number that appears to never convert to a
@@ -127,11 +156,25 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 // discrete number of pixels.  I guess it's zero pixels when the widget is
 // squished.
 //
+// Do we want a widget boundary/resize action built into the boundaries
+// between widgets?
+//
 // Widgets are showing or hidden.  Since that, we need a initial state of
-// "visibility" when the widget is created.
+// "visibility" when the widget is created.  Do we want a show/hide action
+// built into it?
+//
+// Is there enough widget parameters specified here to make a reasonably
+// interactive display of widgets (rectangles)?  Of course we can add more
+// widget (and window) parameters with reasonable default values that are
+// not passed in this function, that have various helper functions to set,
+// get, or act (in some way) with these added widget (and window)
+// parameters.
+//
+// Widget builder function.
 //
 SL_EXPORT struct SlWidget *slWidget_create(
-        // "parent" is either a SlWindow or a SlWidget.
+        // "parent" is either from a SlWindow or a SlWidget which both
+        // have a SlSurface in them.  This parent owns this new widget.
         struct SlSurface *parent,
         // The width and height that the widget draw() code considers
         // optimal.  It may not get this from the parent (and/or window).
@@ -142,10 +185,19 @@ SL_EXPORT struct SlWidget *slWidget_create(
          * (SlGravity_None).
          * */
         enum SlGravity gravity,
-        /* This returned widget is wanting this kind of space. */
+        /* This returned widget is wanting this kind of 2D space. */
         enum SlGreed greed,
+        uint32_t backgroundColor,
+        // TODO: stuff like leftBorderWidth
+        // TODO: CSS like interfaces
+        // The idea of padding is internal to the widget (or window)
+        // If there is padding the widget implementation needs to use it to
+        // get the above width and height parameters.
+        uint32_t borderWidth, // part of the container surface between
+                              // children
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride));
+            uint32_t w, uint32_t h, uint32_t stride),
+        bool hide);
 
 
 // Should these next to functions be inline static?

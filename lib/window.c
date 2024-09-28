@@ -56,7 +56,7 @@ void PushPixels(struct SlWindow *win) {
 static inline void Draw(struct SlWindow *win) {
 
     DASSERT(win);
-    DASSERT(win->draw);
+    DASSERT(win->surface.draw);
     DASSERT(win->wl_surface);
     DASSERT(win->buffer);
     DASSERT(win->surface.width);
@@ -69,7 +69,7 @@ static inline void Draw(struct SlWindow *win) {
     // decides to read these pixels from the shared memory.  In this
     // process the shared memory is at virtual address win->surface.pixels.
 
-    int ret = win->draw(win, win->surface.pixels,
+    int ret = win->surface.draw(win, win->surface.pixels,
             win->surface.width, win->surface.height,
             win->surface.width*4/*stride in bytes*/);
 
@@ -84,7 +84,7 @@ static inline void Draw(struct SlWindow *win) {
         case 1:
             // stop calling this draw function and remove the draw
             // function.
-            win->draw = 0;
+            win->surface.draw = 0;
     }
 }
 
@@ -370,7 +370,7 @@ void _slWindow_destroy(struct SlDisplay *d,
     free_buffer(win);
 
     if(win->wl_callback) {
-        DASSERT(win->draw);
+        DASSERT(win->surface.draw);
         wl_callback_destroy(win->wl_callback);
     }
 
@@ -434,7 +434,7 @@ static void frame_new(struct SlWindow *win,
         struct wl_callback* cb, uint32_t a) {\
 
     DASSERT(win);
-    //DASSERT(win->draw);
+    //DASSERT(win->surface.draw);
     DASSERT(win->wl_surface);
     DASSERT(cb);
     DASSERT(cb == win->wl_callback);
@@ -452,7 +452,7 @@ static void frame_new(struct SlWindow *win,
     // and so it's done for this for this time.
     win->wl_callback = 0;
 
-    if(win->draw) {
+    if(win->surface.draw) {
         Draw(win);
         PostDrawDamage(win);
     }
@@ -583,7 +583,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     win->surface.stride = 4 * w;
     win->x = x;
     win->y = y;
-    win->draw = draw;
+    win->surface.draw = draw;
 
     win->wl_surface = wl_compositor_create_surface(compositor);
     if(!win->wl_surface) {
@@ -647,7 +647,7 @@ bool ConfigureSurface(struct SlWindow *win) {
             return true;
         }
 
-    if(win->draw)
+    if(win->surface.draw)
         // Call callback in Draw().
         Draw(win);
 
@@ -753,7 +753,7 @@ void slWindow_setDraw(struct SlWindow *win,
     DASSERT(win->configured);
     DASSERT(win->surface.type == SlSurfaceType_topLevel, "WRITE MORE CODE HERE");
 
-    win->draw = draw;
+    win->surface.draw = draw;
 
     if(!win->wl_callback) {
         Draw(win);

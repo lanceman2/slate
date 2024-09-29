@@ -17,25 +17,17 @@ static
 int draw(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
-    // CAUTION: Do not write your code like this.  This is just a test
-    // program that has been diddled with quite a bit.
-
-    ASSERT(stride % 4 == 0);
-
-    stride /= 4; // in number of 4 byte ints
-
     cairo_surface_t *surface = cairo_image_surface_create_for_data(
             (unsigned char *) pixels, CAIRO_FORMAT_ARGB32,
-            w, h, stride*4);
+            w, h, stride);
 
     cairo_t *cr = cairo_create(surface);
-    cairo_surface_destroy(surface);
-    // cr will keep a reference to surface.
 
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cr, 0, 0.9, 0.9, 0.8);
     cairo_paint(cr);
     cairo_destroy(cr);
+    cairo_surface_destroy(surface);
  
     return 1; // stop calling
 
@@ -66,7 +58,7 @@ int main(void) {
             0/* borderWidth*/,
             draw, true/*hide*/);
 
-    fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");
+    fprintf(stderr, "\n\nPress Key <Alt-F4> on the window to exit\n\n");
 
     //slWindow_setDraw(win, draw);
 

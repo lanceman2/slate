@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
@@ -42,35 +43,66 @@ AddToSurfaceList(struct SlSurface *parent, struct SlSurface *widget) {
         DASSERT(parent->lastChild);
         DASSERT(parent->lastChild->nextSibling == 0);
         DASSERT(parent->firstChild->prevSibling == 0);
-
+        widget->prevSibling = parent->lastChild;
         parent->lastChild->nextSibling = widget;
     } else {
         DASSERT(!parent->lastChild);
-
         parent->firstChild = widget;
     }
-    widget->prevSibling = parent->lastChild;
     parent->lastChild = widget;
 }
 
-
+// Remove widget from it's list which has the parent "parent".
+//
 static inline void
 RemoveFromSurfaceList(struct SlSurface *parent, struct SlSurface *widget) {
 
+    DASSERT(parent);
+    DASSERT(widget);
+    DASSERT(parent == widget->parent);
+    DASSERT(parent->firstChild);
+    DASSERT(parent->lastChild);
 
+    if(widget->nextSibling) {
+        DASSERT(parent->lastChild != widget);
+        widget->nextSibling->prevSibling = widget->prevSibling;
+    } else {
+        DASSERT(parent->lastChild == widget);
+        parent->lastChild = widget->prevSibling;
+    }
+
+    if(widget->prevSibling) {
+        DASSERT(parent->firstChild != widget);
+        widget->prevSibling->nextSibling = widget->nextSibling;
+        widget->prevSibling = 0;
+    } else {
+        DASSERT(parent->firstChild == widget);
+        parent->firstChild = widget->nextSibling;
+    }
+
+    widget->nextSibling = 0;
+    widget->parent = 0;
 }
 
 
-void DestroyWidget(struct SlWidget *widget) {
+// This function may recurse (call itself).
+//
+void DestroyWidget(struct SlSurface *surface) {
 
-    DASSERT(widget);
+    DASSERT(surface);
+    DASSERT(surface->type == SlSurfaceType_widget);
 
-    struct SlSurface *parent = widget->surface.parent;
-    DASSERT(parent);
+    // Destroy Children
+    while(surface->lastChild)
+        DestroyWidget(surface->lastChild);
 
-    RemoveFromSurfaceList(parent, &widget->surface);
+    RemoveFromSurfaceList(surface->parent, surface);
 
-    DZMEM(widget, sizeof(*widget));
+    struct SlWidget *w = (struct SlWidget *) (
+        ((uint8_t *) surface) - offsetof(struct SlWidget, surface));
+
+    DZMEM(w, sizeof(*w));
+    free(w);
 }
 
 // See declaration of slWidget_create() in ../include/slate.h for more
@@ -93,8 +125,32 @@ struct SlWidget *slWidget_create(
     struct SlWidget *widget = calloc(1, sizeof(*widget));
     ASSERT(widget, "calloc(1,%zu) failed", sizeof(*widget));
 
+    widget->surface.type = SlSurfaceType_widget;
+    widget->surface.gravity = gravity;
+    widget->surface.draw = draw;
+    widget->surface.width = width;
+    widget->surface.height = height;
+    widget->surface.stride = parent->stride;
+    widget->surface.backgroundColor = backgroundColor;
+    widget->surface.borderWidth = borderWidth;
+    widget->surface.draw = draw;
+    widget->greed = greed;
+
     // Add to the surface list.
     AddToSurfaceList(parent, &widget->surface);
+
+    // NOTES:  Need to have a user API/mechanism to hold the window from
+    // drawing (or doing like things) until "all" widgets (users choose
+    // what all is) are added to the windows' tree of widgets.   ....
+    //
+    //  How about a slWindow_compose(win)  ????
+    //
+
+
+    // MORE CODE HERE ..........
+
+
+
 
     return widget;
 }

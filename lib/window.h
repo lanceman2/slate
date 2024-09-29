@@ -60,6 +60,9 @@ struct SlSurface {
     //
     uint32_t stride;
 
+    uint32_t backgroundColor;
+    uint32_t borderWidth;
+
 
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);

@@ -12,5 +12,5 @@ struct SlWidget {
 };
 
 
-extern void DestroyWidget(struct SlWidget *widget);
+extern void DestroyWidget(struct SlSurface *widget);
 

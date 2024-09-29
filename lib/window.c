@@ -11,6 +11,7 @@
 
 #include "debug.h"
 #include "window.h"
+#include "widget.h"
 #include "display.h"
 #include "shm.h"
 
@@ -130,7 +131,6 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     DASSERT(!win->surface.pixels);
     DASSERT(!win->buffer);
 
-
     int stride = win->surface.width * 4;
     size_t size = stride * win->surface.height;
 
@@ -189,7 +189,13 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
-    memset(win->surface.pixels, 250, size);
+    //
+    // This will make all bytes be this number and that's each A R G B is
+    // a byte.  A kind of translucent gray, given R G and B are the same.
+    //
+    // TODO: maybe replace this with a initial user defined background
+    // color.
+    memset(win->surface.pixels, 230, size);
 
     return false;
 }
@@ -231,9 +237,10 @@ static void xdg_toplevel_handle_close(struct SlToplevel *t,
     // press Alt-<F4> seems to be a destroy the "display connection"
     // thingy and not just the particular window that was in focus for the
     // Alt-<F4> event.  I note the if I do not destroy the display in time
-    // the process is terminated.  It may be kwin server signaling my
-    // program.  Seems like a race condition in the kwin server/client
-    // interaction/protocol.
+    // (fast enough) the process is terminated.  It may be kwin server
+    // signaling my program (TODO: I need to check that).  Seems like a
+    // race condition in the kwin server/client interaction/protocol.  Not
+    // what I call a good design.
     //
     t->display->done = true;
 }
@@ -339,6 +346,12 @@ void _slWindow_destroy(struct SlDisplay *d,
 
     DASSERT(d);
     DASSERT(win);
+
+    // Cleanup the list of widgets in
+    // SlSurface::firstChild,lastChild,nextSibling,prevSibling
+    //
+    while(win->surface.lastChild)
+        DestroyWidget(win->surface.lastChild);
 
     // Cleanup wayland stuff for this window in reverse order of
     // construction.  (So I think...)

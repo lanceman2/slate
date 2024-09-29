@@ -192,6 +192,7 @@ SL_EXPORT struct SlWidget *slWidget_create(
         enum SlGravity gravity,
         /* This returned widget is wanting this kind of 2D space. */
         enum SlGreed greed,
+        // backgroundColor is only used if there is no draw function set.
         uint32_t backgroundColor, // A R G B with one byte for each one.
         // TODO: stuff like leftBorderWidth
         // TODO: CSS like interfaces

@@ -62,6 +62,10 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->buffer);
     DASSERT(win->surface.width);
     DASSERT(win->surface.height);
+    DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
+    DASSERT(win->surface.allocation.stride);
     DASSERT(win->wl_callback == 0);
 
     // Call the libslate.so users draw callback.  This draw() function
@@ -70,9 +74,10 @@ static inline void Draw(struct SlWindow *win) {
     // decides to read these pixels from the shared memory.  In this
     // process the shared memory is at virtual address win->surface.pixels.
 
-    int ret = win->surface.draw(win, win->surface.pixels,
-            win->surface.width, win->surface.height,
-            win->surface.width*4/*stride in bytes*/);
+    int ret = win->surface.draw(win, win->surface.allocation.pixels,
+            win->surface.allocation.width,
+            win->surface.allocation.height,
+            win->surface.allocation.stride/*stride in bytes*/);
 
     switch(ret) {
         case 0:
@@ -101,38 +106,56 @@ static inline void free_buffer(struct SlWindow *win) {
         win->buffer = 0;
     }
 
-    if(win->surface.pixels) {
-        DASSERT(win->surface.width);
-        DASSERT(win->surface.height);
+    if(win->surface.allocation.pixels) {
+
+        DASSERT(win->surface.allocation.width);
+        DASSERT(win->surface.allocation.height);
+        DASSERT(win->surface.allocation.stride);
+
         // TODO: Is it (shared memory size) always w*h*((4))??
-        if(munmap(win->surface.pixels,
-                    win->surface.width*win->surface.height*4)) {
-            ERROR("munmap(%p,%d) failed", win->surface.pixels,
-                    win->surface.width*win->surface.height*4);
+        if(munmap(win->surface.allocation.pixels,
+                    win->surface.allocation.height *
+                    win->surface.allocation.stride)) {
+            ERROR("munmap(%p,%d) failed",
+                    win->surface.allocation.pixels,
+                    win->surface.allocation.height *
+                    win->surface.allocation.stride);
             // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%d) failed", win->surface.pixels,
-                win->surface.width*win->surface.height*4);
+            DASSERT(0, "munmap(%p,%d) failed",
+                    win->surface.allocation.pixels,
+                    win->surface.allocation.height *
+                    win->surface.allocation.stride);
         }
-        win->surface.pixels = 0;
     }
+
+    memset(&win->surface.allocation, 0, sizeof(win->surface.allocation));
 }
 
 
 // This creates struct SlWindow:: pixels, and buffer.
-static inline bool CreateBuffer(struct SlWindow *win) {
+static inline bool CreateBuffer(struct SlWindow *win,
+    uint32_t width, uint32_t height) {
 
     DASSERT(win);
     DASSERT(win->surface.width > 0);
     DASSERT(win->surface.height > 0);
+    DASSERT(width > 0);
+    DASSERT(height > 0);
 
     // This does nothing if there is no buffer stuff yet.
     free_buffer(win);
 
-    DASSERT(!win->surface.pixels);
     DASSERT(!win->buffer);
+    DASSERT(!win->surface.allocation.pixels);
+    DASSERT(!win->surface.allocation.x);
+    DASSERT(!win->surface.allocation.y);
+    DASSERT(!win->surface.allocation.width);
+    DASSERT(!win->surface.allocation.height);
+    DASSERT(!win->surface.allocation.stride);
 
-    int stride = win->surface.width * 4;
-    size_t size = stride * win->surface.height;
+    int stride = width * SLATE_PIXEL_SIZE;
+    size_t size = stride * height;
+    uint32_t *pixels;
 
     int fd = create_shm_file(size);
 
@@ -142,9 +165,9 @@ static inline bool CreateBuffer(struct SlWindow *win) {
 
     // Map the (pixels) shared memory file to this processes virtual
     // address space.
-    win->surface.pixels = mmap(0, size,
+    pixels = mmap(0, size,
             PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    if(win->surface.pixels == MAP_FAILED) {
+    if(pixels == MAP_FAILED) {
         ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
                 "MAP_SHARED,fd=%d,0) failed", size, fd);
 	close(fd);
@@ -162,25 +185,44 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     if(!pool) {
         ERROR("wl_shm_create_pool() failed");
         // TODO: What if this fails?:
-        ASSERT(munmap(win->surface.pixels, size) == 0);
+        ASSERT(munmap(pixels, size) == 0);
         close(fd);
         return true;
     }
 
     win->buffer = wl_shm_pool_create_buffer(pool, 0,
-            win->surface.width, win->surface.height,
-            stride, WL_SHM_FORMAT_ARGB8888);
+            width, height, stride, WL_SHM_FORMAT_ARGB8888);
     if(!win->buffer) {
         ERROR("wl_shm_pool_create_buffer() failed");
         wl_shm_pool_destroy(pool);
         // TODO: What if this fails?:
-        ASSERT(munmap(win->surface.pixels, size) == 0);
+        ASSERT(munmap(pixels, size) == 0);
         close(fd);
         return true;
     }
 
+    // I declare that we officially have an allocation for this slate
+    // window surface.
+    //
+    // We define it this way for x,y allocations in slate window (at least
+    // for toplevel).
+    //
+    // TODO: What about slate non-toplevel windows?
+    //
+    // Kind of stupid at this point, but the allocation::width,height can
+    // set now to the user requested size win::surface::width,height.
+    //
+    // We need to keep the user requested size separate from the allocated
+    // size, in case a resize event comes from the compositor to change
+    // the allocated size, making the allocated size different from the
+    // API user requested size.
+    win->surface.allocation.pixels = pixels;
+    win->surface.allocation.width = width;
+    win->surface.allocation.height = height;
+    win->surface.allocation.stride = stride;
+
     // We have what we needed.  Inter-process shared memory at process
-    // virtual address win->surface.pixels.
+    // virtual address win->surface.allocation.pixels.
     wl_shm_pool_destroy(pool);
 
     // Now that we've mapped the file and created the wl_buffer, we no
@@ -190,12 +232,10 @@ static inline bool CreateBuffer(struct SlWindow *win) {
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
     //
-    // This will make all bytes be this number and that's each A R G B is
-    // a byte.  A kind of translucent gray, given R G and B are the same.
-    //
-    // TODO: maybe replace this with a initial user defined background
-    // color.
-    memset(win->surface.pixels, 230, size);
+    uint32_t *end = pixels + height * stride/SLATE_PIXEL_SIZE;
+    uint32_t bgColor = win->surface.backgroundColor;
+    while(pixels < end)
+        *(pixels++) = bgColor;
 
     return false;
 }
@@ -451,8 +491,8 @@ static void frame_new(struct SlWindow *win,
     DASSERT(win->wl_surface);
     DASSERT(cb);
     DASSERT(cb == win->wl_callback);
-    DASSERT(win->surface.width > 0);
-    DASSERT(win->surface.height > 0);
+    DASSERT(win->surface.allocation.width > 0);
+    DASSERT(win->surface.allocation.height > 0);
 
     // TODO: extra line of code not needed after the first frame_new()
     // call.
@@ -592,11 +632,13 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     win->surface.width = w;
     win->surface.height = h;
-    // stride consistent with the width and pixel size of 4 bytes.
-    win->surface.stride = 4 * w;
     win->x = x;
     win->y = y;
     win->surface.draw = draw;
+    // default window background color
+    win->surface.backgroundColor = 0xA0A0FFA0;
+    // default window borderWidth
+    win->surface.borderWidth = 4;
 
     win->wl_surface = wl_compositor_create_surface(compositor);
     if(!win->wl_surface) {
@@ -627,13 +669,16 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         return true;
     }
 
-    // When this is called seems to be variable.
-    if(CreateBuffer(win))
+    // When this is called seems to be variable.  Try to make the window
+    // that size that the API user requested.
+    if(CreateBuffer(win, win->surface.width, win->surface.height))
         return true;
 
     DASSERT(win->buffer);
     DASSERT(win->wl_surface);
-    DASSERT(win->surface.pixels);
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
+    DASSERT(win->surface.allocation.pixels);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -786,3 +831,109 @@ void slWindow_destroy(struct SlWindow *w) {
     _slWindow_destroy(d, w);
     CHECK(pthread_mutex_unlock(&d->mutex));
 }
+
+// This function calls itself.
+//
+// Kind-of a requested size based on all children and parent border
+// widths.
+//
+static inline void AddSizeOfChildren(struct SlSurface *parent,
+        uint32_t *width, uint32_t *height) {
+
+    DASSERT(parent);
+    DASSERT(parent->firstChild);
+    DASSERT(parent->lastChild);
+
+    // Tally surface::width,height
+    //
+    // Kind-of a requested size based on all children.
+    //
+    for(struct SlSurface *sf = parent->firstChild; sf;
+            sf = sf->nextSibling)
+        if(parent->lastChild)
+            AddSizeOfChildren(sf, width, height);
+
+    uint32_t borderWidth = parent->borderWidth;
+
+    // Tally width,height based on child requested width,height and
+    // parent border widths.
+    //
+    DASSERT(parent->lastChild);
+
+    switch(parent->gravity) {
+        case SlGravity_TB:// top to bottom
+        case SlGravity_BT:// bottom to top
+
+            for(struct SlSurface *sf = parent->firstChild; sf;
+                    sf = sf->nextSibling) {
+                // widget height plus a border
+                *height += (sf->height + borderWidth);
+                if(*width < sf->width)
+                    *width = sf->width;
+            }
+            // border on the top (or bottom)
+            *height += borderWidth;
+            // Now we have the height additions.
+
+            // For the width we have two borders, the left and the
+            // right.
+            *width += 2 * borderWidth;
+            break;
+
+        case SlGravity_LR:// left to right
+        case SlGravity_RL:// right to left
+
+            for(struct SlSurface *sf = parent->firstChild; sf;
+                    sf = sf->nextSibling) {
+                // widget width plus a border
+                *width += (sf->width + borderWidth);
+                if(*height < sf->height)
+                    *height = sf->height;
+            }
+            // border on an end.
+            *width += borderWidth;
+            // Now we have the width additions.
+
+            // For the height we have two borders, the top and the
+            // bottom.
+            *height += 2 * borderWidth;
+            break;
+
+        case SlGravity_One:
+            // There should be one child:
+            ASSERT(parent->firstChild == parent->lastChild);
+
+            *height += parent->firstChild->height + borderWidth;
+            *width  += parent->firstChild->width  + borderWidth;
+            break;
+
+        case SlGravity_None:
+
+            ASSERT(0);
+            break;
+
+    }
+}
+
+
+// TODO: We need to have a user API/mechanism to hold the window from
+// drawing (or doing like things) until "all" widgets (users choose what
+// all is) are added to the windows' tree of widgets.   ....
+//
+void slWindow_compose(struct SlWindow *win) {
+
+    DASSERT(win);
+    ASSERT(win->surface.parent == 0, "Not a top level window");
+
+    if(!win->surface.firstChild) {
+        DASSERT(!win->surface.lastChild);
+        INFO("This window has no widgets in it");
+        return;
+    }
+    DASSERT(win->surface.lastChild);
+
+    uint32_t width = 0, height = 0;
+
+    AddSizeOfChildren(&win->surface, &width, &height);
+}
+

@@ -58,19 +58,19 @@ void DrawBgColor(struct SlWindow *win, uint32_t bgColor,
     }
 
     int32_t xend = x + w;
-    if(xend > win->surface.width)
-        xend = win->surface.width;
+    if(xend > win->surface.allocation.width)
+        xend = win->surface.allocation.width;
     if(x >= xend)
         return;
 
     int32_t yend = y0 + h;
-    if(yend > win->surface.height)
-        yend = win->surface.height;
+    if(yend > win->surface.allocation.height)
+        yend = win->surface.allocation.height;
     if(y0 >= yend)
         return;
 
-    uint32_t width = win->surface.width;
-    uint32_t *pixels = win->surface.pixels;
+    uint32_t width = win->surface.allocation.width;
+    uint32_t *pixels = win->surface.allocation.pixels;
 
     while(x < xend) {
         int32_t y = y0;
@@ -102,8 +102,8 @@ bool slWindow_DrawText(struct SlWindow *win,
     DASSERT(h > 0);
     DASSERT(win);
     DASSERT(win->surface.type == SlSurfaceType_topLevel);
-    DASSERT(win->surface.width > 0);
-    DASSERT(win->surface.height > 0);
+    DASSERT(win->surface.allocation.width > 0);
+    DASSERT(win->surface.allocation.height > 0);
 
     char *ffile = slFindFont(font);
     if(!ffile) return true; // fail
@@ -142,9 +142,9 @@ bool slWindow_DrawText(struct SlWindow *win,
     f.pen.x = 0;
     f.pen.y = 0;
 
-    uint32_t *pixels = win->surface.pixels;
-    uint32_t wwidth = win->surface.width;
-    uint32_t wheight = win->surface.height;
+    uint32_t *pixels = win->surface.allocation.pixels;
+    uint32_t wwidth = win->surface.allocation.width;
+    uint32_t wheight = win->surface.allocation.height;
 
     const char *end = text + strlen(text);
 

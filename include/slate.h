@@ -67,11 +67,15 @@ struct SlSurface;
 //
 enum SlGravity {
 
-    // SlGravity is a attribute of a widget container, be it a widget or
-    // window.
+    // SlGravity is a attribute of a widget container (surface), be it a
+    // widget or window.
 
     // T Top, B Bottom, L Left, R Right
     SlGravity_None = 0, // For non-container widgets or windows
+
+    // The container surface can only have zero or one widget, so it puts
+    // the child widget where ever it wants on its' surface.
+    SlGravity_One,
 
     // Vertically column aligning child widgets
     SlGravity_TB, // child widgets float/align top to bottom
@@ -182,7 +186,8 @@ SL_EXPORT struct SlWidget *slWidget_create(
         // have a SlSurface in them.  This parent owns this new widget.
         struct SlSurface *parent,
         // The width and height that the widget draw() code considers
-        // optimal.  It may not get this from the parent (and/or window).
+        // optimal (or minimum?).  It may not get this from the parent
+        // (and/or window).
         uint32_t width, uint32_t height,
         /* Children of this returned widget feel this gravity.
          * It's like the gravity in a room in 2D space.

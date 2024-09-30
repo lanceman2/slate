@@ -60,8 +60,6 @@ int main(void) {
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> on the window to exit\n\n");
 
-    //slWindow_setDraw(win, draw);
-
 #ifdef LOOP
     while(slDisplay_dispatch(d));
 #endif

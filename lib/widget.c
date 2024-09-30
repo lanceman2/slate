@@ -105,6 +105,7 @@ void DestroyWidget(struct SlSurface *surface) {
     free(w);
 }
 
+
 // See declaration of slWidget_create() in ../include/slate.h for more
 // information in the comments.
 //
@@ -130,7 +131,6 @@ struct SlWidget *slWidget_create(
     widget->surface.draw = draw;
     widget->surface.width = width;
     widget->surface.height = height;
-    widget->surface.stride = parent->stride;
     widget->surface.backgroundColor = backgroundColor;
     widget->surface.borderWidth = borderWidth;
     widget->surface.draw = draw;
@@ -138,13 +138,6 @@ struct SlWidget *slWidget_create(
 
     // Add to the surface list.
     AddToSurfaceList(parent, &widget->surface);
-
-    // NOTES:  Need to have a user API/mechanism to hold the window from
-    // drawing (or doing like things) until "all" widgets (users choose
-    // what all is) are added to the windows' tree of widgets.   ....
-    //
-    //  How about a slWindow_compose(win)  ????
-    //
 
 
     // MORE CODE HERE ..........

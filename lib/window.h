@@ -10,18 +10,76 @@ enum SlSurfaceType {
     // First window types:
     SlSurfaceType_topLevel = 1, // From xdg_surface_get_toplevel()
     SlSurfaceType_popup, // From wl_shell_surface_set_popup()
-    SlSurfaceType_sub, // From wl_subcompositor_get_subsurface()
+
+    //SlSurfaceType_sub, // From wl_subcompositor_get_subsurface()
     //SlSurfaceType_fullscreen, // ??? fullscreen
 
     SlSurfaceType_widget // not a window
 };
 
 
-// A Window or a Widget are a Surface.
+// Allocation is all the parameters that need to change when a window (and
+// the widgets there-in) is resized, or first configured.  Similar to what
+// GTK calls an allocation (theirs is just the rectangle), but we include
+// the starting pixel pointer and stride.
+//
+struct SlAllocation {
+
+    // A pixel allocation parameterizes the part of the pixels a widget
+    // (or window) can draw on.  allocation::x,y is the position relative
+    // to the toplevel parent window surface.  The word allocation is like
+    // GTK uses the word for, except we use positions relative to the
+    // toplevel window.  We can get the relative X position from:
+    //
+    //   x_rel = widget->allocation.x - widget->parent->allocation.x
+    //   y_rel = widget->allocation.y - widget->parent->allocation.y
+    //
+    // Note it's not like GTK: GTK allocation uses positions x,y relative
+    // to the parent, not relative to the GDK window position.
+    //
+    // Calculating positions relative to the toplevel window, for relative
+    // positions, is a pain-in-the-ass in GTK.  We'll see if this works
+    // out...
+    //
+    uint32_t x, y, width, height;
+
+    // "pixels" points to where the inter-process shared memory pixels
+    // start for the case of a window, and "pixels" points to the top left
+    // corner of the rectangle for a widget that is inside of a window.
+    uint32_t *pixels;
+
+    // "stride" is the distance in bytes from positions X,Y to get to the
+    // next (X, Y+1) position at a same X value.  It's used to loop back
+    // to the next Y row in the pixels data.
+    //
+    // Think of X position as increasing as you move along (increasing X)
+    // a row.
+    //
+    // "stride" is 4*width for a window because each pixel is 4 bytes in
+    // size and there is no memory padding at end of a row.  It just works
+    // out that way.  For a widget that is not as wide as the window that
+    // contains it the stride is larger than 4*width where width is the
+    // width of the widget.
+    //
+    // what-does-stride-mean: How long with this URL last?:
+    // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
+    //
+    uint32_t stride;
+};
+
+
+// A Window or a Widget are a Surface (or have a surface in them).
 //
 struct SlSurface {
 
     enum SlSurfaceType type;
+
+    // The toplevel window allocation::x,y will always be 0,0.
+    //
+    // Current allocation.  This can change as the surface is resized from
+    // the wayland desktop window manager/compositor server.
+    //
+    struct SlAllocation allocation;
 
     // We keep a linked list (tree like) graph of surfaces starting at a
     // window with parent == 0.  The top level parent windows are owned by
@@ -38,27 +96,10 @@ struct SlSurface {
     // cannot have children.
     enum SlGravity gravity;
 
-    // "pixels" points to where the inter-process shared memory pixels
-    // start for the case of a window, and "pixels" points to the top left
-    // corner of the rectangle for a widget.
-    uint32_t *pixels;
-
+    // width,height preferred/requested by the user API create function:
+    // slWindow_create() or slWidget_create().
     uint32_t width, height; // in pixels
 
-    // "stride" is the distance in bytes from positions X,Y to get to the
-    // next (X, Y+1) position at a same X value.  It's used to loop back
-    // to the next Y row in the pixels data.
-    //
-    // Think of X position as increasing as you move along (increasing X)
-    // a row.
-    //
-    // "stride" is 4*width for a window because each pixel is 4 bytes in
-    // size and there is no memory padding at end of a row.
-    //
-    // what-does-stride-mean: How long with this URL last?:
-    // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
-    //
-    uint32_t stride;
 
     uint32_t backgroundColor;
     uint32_t borderWidth;
@@ -93,6 +134,11 @@ struct SlWindow {
 
     bool configured, open, framed;
 
+    // Negative values put the window at a root window edge.  Examples:
+    //   -1,0  ==> right,top
+    //    0,-1 ==> left,bottom
+    //   -1,-1 ==> right,bottom
+    //
     int32_t x, y;
 };
 

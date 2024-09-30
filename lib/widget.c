@@ -134,6 +134,7 @@ struct SlWidget *slWidget_create(
     widget->surface.backgroundColor = backgroundColor;
     widget->surface.borderWidth = borderWidth;
     widget->surface.draw = draw;
+    widget->surface.hide = hide;
     widget->greed = greed;
 
     // Add to the surface list.
@@ -141,7 +142,6 @@ struct SlWidget *slWidget_create(
 
 
     // MORE CODE HERE ..........
-
 
 
 

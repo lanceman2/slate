@@ -112,16 +112,15 @@ static inline void free_buffer(struct SlWindow *win) {
         DASSERT(win->surface.allocation.height);
         DASSERT(win->surface.allocation.stride);
 
-        // TODO: Is it (shared memory size) always w*h*((4))??
         if(munmap(win->surface.allocation.pixels,
                     win->surface.allocation.height *
                     win->surface.allocation.stride)) {
-            ERROR("munmap(%p,%d) failed",
+            ERROR("munmap(%p,%" PRIu32 ") failed",
                     win->surface.allocation.pixels,
                     win->surface.allocation.height *
                     win->surface.allocation.stride);
             // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%d) failed",
+            DASSERT(0, "munmap(%p,%" PRIu32 ") failed",
                     win->surface.allocation.pixels,
                     win->surface.allocation.height *
                     win->surface.allocation.stride);
@@ -761,6 +760,10 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
     t->display = d;
     win->surface.type = SlSurfaceType_topLevel;
 
+    // Some defaults:
+    win->surface.gravity = SlGravity_One;
+    win->surface.hide = false;
+
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
@@ -837,34 +840,51 @@ void slWindow_destroy(struct SlWindow *w) {
 // Kind-of a requested size based on all children and parent border
 // widths.
 //
-static inline void AddSizeOfChildren(struct SlSurface *parent,
-        uint32_t *width, uint32_t *height) {
+static void AddSizeOfChildren(struct SlSurface *s) {
 
-    DASSERT(parent);
-    DASSERT(parent->firstChild);
-    DASSERT(parent->lastChild);
+    DASSERT(s);
 
-    // Tally surface::width,height
-    //
-    // Kind-of a requested size based on all children.
-    //
-    for(struct SlSurface *sf = parent->firstChild; sf;
-            sf = sf->nextSibling)
-        if(parent->lastChild)
-            AddSizeOfChildren(sf, width, height);
+    if(!s->firstChild) {
+        DASSERT(!s->lastChild);
+        // This is a leaf node.
+        //
+        // We start by giving it what it requests.
+        s->allocation.width  = s->width;
+        s->allocation.height = s->height;
+        return;
+    }
 
-    uint32_t borderWidth = parent->borderWidth;
+    // This is a parent node.
+    DASSERT(s->lastChild);
+    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling)
+        // Stack dive toward the children.
+        AddSizeOfChildren(sf);
+
+
+    // Now this surface has all its children's allocations tallied.
+
+    uint32_t borderWidth = s->borderWidth;
 
     // Tally width,height based on child requested width,height and
     // parent border widths.
     //
-    DASSERT(parent->lastChild);
+    uint32_t *width  = &s->allocation.width;
+    uint32_t *height = &s->allocation.height;
 
-    switch(parent->gravity) {
+    // Slate container surfaces (widgets and windows) may request space
+    // for themselves in addition to space for their children.  A common
+    // case is to use the non-child space for decorations that go around
+    // the children.
+    //
+    *width  = s->width;
+    *height = s->height;
+
+    switch(s->gravity) {
+
         case SlGravity_TB:// top to bottom
         case SlGravity_BT:// bottom to top
 
-            for(struct SlSurface *sf = parent->firstChild; sf;
+            for(struct SlSurface *sf = s->firstChild; sf;
                     sf = sf->nextSibling) {
                 // widget height plus a border
                 *height += (sf->height + borderWidth);
@@ -883,7 +903,7 @@ static inline void AddSizeOfChildren(struct SlSurface *parent,
         case SlGravity_LR:// left to right
         case SlGravity_RL:// right to left
 
-            for(struct SlSurface *sf = parent->firstChild; sf;
+            for(struct SlSurface *sf = s->firstChild; sf;
                     sf = sf->nextSibling) {
                 // widget width plus a border
                 *width += (sf->width + borderWidth);
@@ -900,18 +920,18 @@ static inline void AddSizeOfChildren(struct SlSurface *parent,
             break;
 
         case SlGravity_One:
-            // There should be one child:
-            ASSERT(parent->firstChild == parent->lastChild);
+            // By definition there should be one child for a surface with
+            // SlGravity_One
+            ASSERT(s->firstChild == s->lastChild);
 
-            *height += parent->firstChild->height + borderWidth;
-            *width  += parent->firstChild->width  + borderWidth;
+            *height += s->firstChild->height + 2 * borderWidth;
+            *width  += s->firstChild->width  + 2 * borderWidth;
             break;
 
         case SlGravity_None:
 
-            ASSERT(0);
+            ASSERT(0, "A surface with SlGravity_None has children");
             break;
-
     }
 }
 
@@ -932,8 +952,25 @@ void slWindow_compose(struct SlWindow *win) {
     }
     DASSERT(win->surface.lastChild);
 
-    uint32_t width = 0, height = 0;
+    // Save theses old values
+    uint32_t width = win->surface.allocation.width,
+            height = win->surface.allocation.height;
 
-    AddSizeOfChildren(&win->surface, &width, &height);
+    AddSizeOfChildren(&win->surface);
+
+    if(width) {
+        DSPEW("old allocation width,height=%" PRIu32 ",%" PRIu32
+                " requested allocation width,height=%" PRIu32 ",%" PRIu32,
+                width, height,
+                win->surface.allocation.width,
+                win->surface.allocation.height);
+    } else {
+        DSPEW("requested allocation width,height = %" PRIu32 ",%" PRIu32,
+                win->surface.allocation.width,
+                win->surface.allocation.height);
+    }
+
+    // Now we have all the size allocations figured out as if we could
+    // give all the widgets the sizes them requested.
 }
 

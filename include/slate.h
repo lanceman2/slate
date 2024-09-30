@@ -60,23 +60,24 @@ struct SlSurface;
 //
 // Studying the behavior of gvim (the program) with changing multiple edit
 // views is very helpful in studying widget containerization.  Like for
-// example how it slits the view into two sized views any time a view is
-// split.  And, what happens when a view is removed from in between views.
-// And, what happen when a view (widget) border is moved when there are a
-// lot of views in a large grid of views.
+// example how it splits a edit wiew.  And, what happens when a view is
+// removed from in between views.  And, what happen when a view (widget)
+// border is moved when there are a lot of views in a large grid of
+// views.
 //
 enum SlGravity {
 
     // SlGravity is a attribute of a widget container (surface), be it a
     // widget or window.
 
-    // T Top, B Bottom, L Left, R Right
     SlGravity_None = 0, // For non-container widgets or windows
 
     // The container surface can only have zero or one widget, so it puts
-    // the child widget where ever it wants on its' surface.
+    // the child widget where ever it wants to, on its surface.
     SlGravity_One,
 
+    // T Top, B Bottom, L Left, R Right
+    //
     // Vertically column aligning child widgets
     SlGravity_TB, // child widgets float/align top to bottom
     SlGravity_BT, // child widgets float/align bottom to top
@@ -124,6 +125,8 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
+SL_EXPORT
+void slWindow_compose(struct SlWindow *win);
 
 // This not only defines the widget, it also packs it too.
 //
@@ -185,15 +188,16 @@ SL_EXPORT struct SlWidget *slWidget_create(
         // "parent" is either from a SlWindow or a SlWidget which both
         // have a SlSurface in them.  This parent owns this new widget.
         struct SlSurface *parent,
-        // The width and height that the widget draw() code considers
-        // optimal (or minimum?).  It may not get this from the parent
-        // (and/or window).
+        // The width and height that the widget would like to use for
+        // drawing itself and not for its children.  The size needed
+        // for its children will be calculated from the children's
+        // width, height, and this widgets border width (which pads
+        // between the children).
         uint32_t width, uint32_t height,
         /* Children of this returned widget feel this gravity.
          * It's like the gravity in a room in 2D space.
          * Leaf widgets (non-container) have no gravity
-         * (SlGravity_None).
-         * */
+         * (SlGravity_None). */
         enum SlGravity gravity,
         /* This returned widget is wanting this kind of 2D space. */
         enum SlGreed greed,

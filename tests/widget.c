@@ -58,6 +58,8 @@ int main(void) {
             0/* borderWidth*/,
             draw, true/*hide*/);
 
+    slWindow_compose(win);
+
     fprintf(stderr, "\n\nPress Key <Alt-F4> on the window to exit\n\n");
 
 #ifdef LOOP

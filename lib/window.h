@@ -104,9 +104,19 @@ struct SlSurface {
     uint32_t backgroundColor;
     uint32_t borderWidth;
 
-
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
+
+    // This is a user requested attribute of the surface.  It has two
+    // meaning that depend on if it is a top most surface or a widget.
+    //
+    // TOP MOST: For the top most surface parent this hide means do not
+    // render the window, or if it is rendered, hide (iconify) it.
+    //
+    // WIDGET: For a widget (not a top most surface parent) this means do
+    // not allocate space for this widget's surface.
+    //
+    bool hide;
 };
 
 

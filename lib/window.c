@@ -66,7 +66,16 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
     DASSERT(win->surface.allocation.stride);
+    DASSERT(win->sharedBufferSize);
     DASSERT(win->wl_callback == 0);
+
+    // We better not draw if we are in the middle of setting up the shared
+    // memory; and yes we do setup surface.allocation.width,height some
+    // time before we make the shared memory pixel buffers.
+    DASSERT(win->surface.allocation.height *
+            win->surface.allocation.stride ==
+            win->sharedBufferSize);
+
 
     // Call the libslate.so users draw callback.  This draw() function
     // can set the win->surface.pixels pixel value to what ever it wants to.
@@ -108,52 +117,49 @@ static inline void free_buffer(struct SlWindow *win) {
 
     if(win->surface.allocation.pixels) {
 
-        DASSERT(win->surface.allocation.width);
-        DASSERT(win->surface.allocation.height);
-        DASSERT(win->surface.allocation.stride);
+        DASSERT(win->sharedBufferSize);
 
         if(munmap(win->surface.allocation.pixels,
-                    win->surface.allocation.height *
-                    win->surface.allocation.stride)) {
-            ERROR("munmap(%p,%" PRIu32 ") failed",
+                    win->sharedBufferSize)) {
+            ERROR("munmap(%p,%zu) failed",
                     win->surface.allocation.pixels,
-                    win->surface.allocation.height *
-                    win->surface.allocation.stride);
+                    win->sharedBufferSize);
             // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%" PRIu32 ") failed",
+            DASSERT(0, "munmap(%p,%zu) failed",
                     win->surface.allocation.pixels,
-                    win->surface.allocation.height *
-                    win->surface.allocation.stride);
+                    win->sharedBufferSize);
         }
-    }
+        win->sharedBufferSize = 0;
+        win->surface.allocation.pixels = 0;
 
-    memset(&win->surface.allocation, 0, sizeof(win->surface.allocation));
+    } else {
+        DASSERT(!win->sharedBufferSize);
+    }
 }
 
 
 // This creates struct SlWindow:: pixels, and buffer.
-static inline bool CreateBuffer(struct SlWindow *win,
-    uint32_t width, uint32_t height) {
+static inline bool RecreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
-    DASSERT(win->surface.width > 0);
-    DASSERT(win->surface.height > 0);
-    DASSERT(width > 0);
-    DASSERT(height > 0);
 
+    // Given the name Recreate we need to cleanup the old stuff.
+    //
     // This does nothing if there is no buffer stuff yet.
     free_buffer(win);
 
     DASSERT(!win->buffer);
     DASSERT(!win->surface.allocation.pixels);
+    // TODO: What the hell are x,y, at this time?
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
-    DASSERT(!win->surface.allocation.width);
-    DASSERT(!win->surface.allocation.height);
-    DASSERT(!win->surface.allocation.stride);
 
-    int stride = width * SLATE_PIXEL_SIZE;
-    size_t size = stride * height;
+    DASSERT(!win->surface.allocation.stride);
+    DASSERT(!win->sharedBufferSize);
+
+    int stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
+    // pixels shared Buffer Size in bytes
+    size_t size = stride * win->surface.allocation.height;
     uint32_t *pixels;
 
     int fd = create_shm_file(size);
@@ -190,7 +196,9 @@ static inline bool CreateBuffer(struct SlWindow *win,
     }
 
     win->buffer = wl_shm_pool_create_buffer(pool, 0,
-            width, height, stride, WL_SHM_FORMAT_ARGB8888);
+            win->surface.allocation.width,
+            win->surface.allocation.height,
+            stride, WL_SHM_FORMAT_ARGB8888);
     if(!win->buffer) {
         ERROR("wl_shm_pool_create_buffer() failed");
         wl_shm_pool_destroy(pool);
@@ -216,9 +224,8 @@ static inline bool CreateBuffer(struct SlWindow *win,
     // the allocated size, making the allocated size different from the
     // API user requested size.
     win->surface.allocation.pixels = pixels;
-    win->surface.allocation.width = width;
-    win->surface.allocation.height = height;
     win->surface.allocation.stride = stride;
+    win->sharedBufferSize = size;
 
     // We have what we needed.  Inter-process shared memory at process
     // virtual address win->surface.allocation.pixels.
@@ -231,7 +238,8 @@ static inline bool CreateBuffer(struct SlWindow *win,
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
     //
-    uint32_t *end = pixels + height * stride/SLATE_PIXEL_SIZE;
+    uint32_t *end = pixels +
+        win->surface.allocation.height * stride/SLATE_PIXEL_SIZE;
     uint32_t bgColor = win->surface.backgroundColor;
     while(pixels < end)
         *(pixels++) = bgColor;
@@ -668,16 +676,18 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         return true;
     }
 
+    win->surface.allocation.width  = win->surface.width;
+    win->surface.allocation.height = win->surface.height;
+
     // When this is called seems to be variable.  Try to make the window
     // that size that the API user requested.
-    if(CreateBuffer(win, win->surface.width, win->surface.height))
+    if(RecreateBuffer(win))
         return true;
 
     DASSERT(win->buffer);
     DASSERT(win->wl_surface);
-    DASSERT(win->surface.allocation.width);
-    DASSERT(win->surface.allocation.height);
     DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->sharedBufferSize);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -840,7 +850,8 @@ void slWindow_destroy(struct SlWindow *w) {
 // Kind-of a requested size based on all children and parent border
 // widths.
 //
-static void AddSizeOfChildren(struct SlSurface *s) {
+void
+AddSizeOfChildren(struct SlSurface *s) {
 
     DASSERT(s);
 
@@ -860,7 +871,6 @@ static void AddSizeOfChildren(struct SlSurface *s) {
         // Stack dive toward the children.
         AddSizeOfChildren(sf);
 
-
     // Now this surface has all its children's allocations tallied.
 
     uint32_t borderWidth = s->borderWidth;
@@ -868,8 +878,9 @@ static void AddSizeOfChildren(struct SlSurface *s) {
     // Tally width,height based on child requested width,height and
     // parent border widths.
     //
-    uint32_t *width  = &s->allocation.width;
-    uint32_t *height = &s->allocation.height;
+    uint32_t *width  = &(s->allocation.width);
+    uint32_t *height = &(s->allocation.height);
+
 
     // Slate container surfaces (widgets and windows) may request space
     // for themselves in addition to space for their children.  A common
@@ -887,9 +898,9 @@ static void AddSizeOfChildren(struct SlSurface *s) {
             for(struct SlSurface *sf = s->firstChild; sf;
                     sf = sf->nextSibling) {
                 // widget height plus a border
-                *height += (sf->height + borderWidth);
-                if(*width < sf->width)
-                    *width = sf->width;
+                *height += (sf->allocation.height + borderWidth);
+                if(*width < sf->allocation.width)
+                    *width = sf->allocation.width;
             }
             // border on the top (or bottom)
             *height += borderWidth;
@@ -906,9 +917,9 @@ static void AddSizeOfChildren(struct SlSurface *s) {
             for(struct SlSurface *sf = s->firstChild; sf;
                     sf = sf->nextSibling) {
                 // widget width plus a border
-                *width += (sf->width + borderWidth);
-                if(*height < sf->height)
-                    *height = sf->height;
+                *width += (sf->allocation.width + borderWidth);
+                if(*height < sf->allocation.height)
+                    *height = sf->allocation.height;
             }
             // border on an end.
             *width += borderWidth;
@@ -924,8 +935,8 @@ static void AddSizeOfChildren(struct SlSurface *s) {
             // SlGravity_One
             ASSERT(s->firstChild == s->lastChild);
 
-            *height += s->firstChild->height + 2 * borderWidth;
-            *width  += s->firstChild->width  + 2 * borderWidth;
+            *width  += (s->firstChild->allocation.width  + 2 * borderWidth);
+            *height += (s->firstChild->allocation.height + 2 * borderWidth);
             break;
 
         case SlGravity_None:
@@ -933,6 +944,54 @@ static void AddSizeOfChildren(struct SlSurface *s) {
             ASSERT(0, "A surface with SlGravity_None has children");
             break;
     }
+}
+
+
+static void
+ShrinkAllocatedWidth(struct SlSurface *s) {
+
+
+    DASSERT(s);
+    return;
+
+    if(!s->firstChild) {
+        DASSERT(!s->lastChild);
+        // This is a leaf child node.
+        //
+        // We start by giving it what it requests.
+        s->allocation.width  = s->width;
+        s->allocation.height = s->height;
+        return;
+    }
+
+    // This is a parent node.
+    DASSERT(s->lastChild);
+    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling) {
+        ERROR();
+        // Stack dive toward the children.
+        //ShrinkAllocatedWidth(sf);
+    }
+}
+
+static void
+GrowAllocatedWidth(struct SlSurface *s) {
+
+    DASSERT(s);
+
+}
+
+static void
+ShrinkAllocatedHeight(struct SlSurface *s) {
+
+    DASSERT(s);
+
+}
+
+static void
+GrowAllocatedHeight(struct SlSurface *s) {
+
+    DASSERT(s);
+
 }
 
 
@@ -952,25 +1011,44 @@ void slWindow_compose(struct SlWindow *win) {
     }
     DASSERT(win->surface.lastChild);
 
-    // Save theses old values
-    uint32_t width = win->surface.allocation.width,
-            height = win->surface.allocation.height;
+    // Save theses old values.  We need to see if they change.
+    uint32_t oldWidth = win->surface.allocation.width,
+            oldHeight = win->surface.allocation.height;
 
     AddSizeOfChildren(&win->surface);
 
-    if(width) {
+    if(oldWidth) {
         DSPEW("old allocation width,height=%" PRIu32 ",%" PRIu32
-                " requested allocation width,height=%" PRIu32 ",%" PRIu32,
-                width, height,
+                "  tallied allocation width,height=%" PRIu32 ",%" PRIu32,
+                oldWidth, oldHeight,
                 win->surface.allocation.width,
                 win->surface.allocation.height);
     } else {
-        DSPEW("requested allocation width,height = %" PRIu32 ",%" PRIu32,
+        // We should have all the old wayland client surface stuff too.
+        DASSERT(win->buffer);
+        DASSERT(win->wl_surface);
+        DASSERT(win->xdg_surface);
+
+        DSPEW("tallied  allocation width,height = %" PRIu32 ",%" PRIu32,
                 win->surface.allocation.width,
                 win->surface.allocation.height);
     }
 
     // Now we have all the size allocations figured out as if we could
     // give all the widgets the sizes them requested.
-}
 
+    if(win->surface.allocation.width == oldWidth &&
+            win->surface.allocation.height == oldHeight)
+         return;
+
+    if(win->surface.allocation.width > win->surface.width)
+        ShrinkAllocatedWidth(&win->surface);
+    else if(win->surface.allocation.width < win->surface.width)
+        GrowAllocatedWidth(&win->surface);
+
+    if(win->surface.allocation.height > win->surface.height)
+        ShrinkAllocatedHeight(&win->surface);
+    else if(win->surface.allocation.height < win->surface.height)
+        GrowAllocatedHeight(&win->surface);
+
+}

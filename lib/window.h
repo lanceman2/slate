@@ -81,6 +81,7 @@ struct SlSurface {
     //
     struct SlAllocation allocation;
 
+
     // We keep a linked list (tree like) graph of surfaces starting at a
     // window with parent == 0.  The top level parent windows are owned by
     // a display.  Displays are owned by a static global list of displays
@@ -124,6 +125,14 @@ struct SlWindow {
 
     // inherit slate surface
     struct SlSurface surface;
+
+    // Size in bytes of the current mmap() shared memory used with the
+    // wayland compositor and this wayland client.  This is a function of
+    // the width and height in the surface.allocation (above), but it
+    // may not be in the case where we are in the midst of resizing the
+    // window.  Hence we need the old shared memory size, in order to call
+    // munmap(2) to cleanup.
+    size_t sharedBufferSize;
 
     // The parent owns this object.  TopLevel windows have
     // parent=0.

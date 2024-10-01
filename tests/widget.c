@@ -56,7 +56,7 @@ int main(void) {
             SlGreed_None,
             0x20F0F000/* background color*/,
             0/* borderWidth*/,
-            draw, true/*hide*/);
+            draw, false/*hide*/);
 
     slWindow_compose(win);
 

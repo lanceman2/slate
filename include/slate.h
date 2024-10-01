@@ -65,6 +65,9 @@ struct SlSurface;
 // border is moved when there are a lot of views in a large grid of
 // views.
 //
+// As in general relativity, gravity defines how space is distributed
+// among its massive pieces.  WTF.
+//
 enum SlGravity {
 
     // SlGravity is a attribute of a widget container (surface), be it a
@@ -84,7 +87,9 @@ enum SlGravity {
 
     // Horizontally row aligning child widgets
     SlGravity_LR, // child widgets float/align left to right
-    SlGravity_RL  // child widgets float/align right to left
+    SlGravity_RL,  // child widgets float/align right to left
+
+    SlGravity_Callback // The window or widget will define its own packing.
 };
 
 

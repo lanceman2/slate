@@ -121,7 +121,7 @@ struct SlWidget *slWidget_create(
                 uint32_t w, uint32_t h, uint32_t stride),
         bool hide) {
 
-    ASSERT(parent);
+    ASSERT(parent, "slWidget_create() with no parent");
 
     struct SlWidget *widget = calloc(1, sizeof(*widget));
     ASSERT(widget, "calloc(1,%zu) failed", sizeof(*widget));
@@ -134,7 +134,7 @@ struct SlWidget *slWidget_create(
     widget->surface.backgroundColor = backgroundColor;
     widget->surface.borderWidth = borderWidth;
     widget->surface.draw = draw;
-    widget->surface.hide = hide;
+    widget->surface.hidden = hide;
     widget->greed = greed;
 
     // Add to the surface list.

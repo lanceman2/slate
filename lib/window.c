@@ -772,7 +772,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 
     // Some defaults:
     win->surface.gravity = SlGravity_One;
-    win->surface.hide = false;
+    win->surface.hidden = false;
 
 
     CHECK(pthread_mutex_lock(&d->mutex));
@@ -859,19 +859,34 @@ AddSizeOfChildren(struct SlSurface *s) {
         DASSERT(!s->lastChild);
         // This is a leaf node.
         //
-        // We start by giving it what it requests.
-        s->allocation.width  = s->width;
-        s->allocation.height = s->height;
+        if(s->hidden) {
+            // No soup for you.  In that, you don't get what you came in
+            // here for.
+            s->allocation.width  = 0;
+            s->allocation.height = 0;
+        } else {
+            // We start by giving it what it requests.
+            s->allocation.width  = s->width;
+            s->allocation.height = s->height;
+        }
+ 
         return;
     }
 
     // This is a parent node.
     DASSERT(s->lastChild);
+
+    if(s->hidden) {
+        s->allocation.width  = 0;
+        s->allocation.height = 0;
+        return;
+    }
+
     for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling)
         // Stack dive toward the children.
         AddSizeOfChildren(sf);
 
-    // Now this surface has all its children's allocations tallied.
+    // Now this surface, s, has all its children's allocations tallied.
 
     uint32_t borderWidth = s->borderWidth;
 
@@ -943,6 +958,9 @@ AddSizeOfChildren(struct SlSurface *s) {
 
             ASSERT(0, "A surface with SlGravity_None has children");
             break;
+
+        default:
+            ASSERT(0, "Write more code here");
     }
 }
 
@@ -1015,7 +1033,25 @@ void slWindow_compose(struct SlWindow *win) {
     uint32_t oldWidth = win->surface.allocation.width,
             oldHeight = win->surface.allocation.height;
 
+
+    if(win->surface.hidden) {
+        // It's a top level window that is hidden.
+        win->surface.allocation.width  = 0;
+        win->surface.allocation.height = 0;
+        // We'll just ignore the rest of the
+        // surface.allocation::width.height values that are in the
+        // rest of the widget tree.
+        //
+        // There is no reason to compose (allocate) this window if it is
+        // hidden.
+        return;
+    }
+
+
     AddSizeOfChildren(&win->surface);
+
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
 
     if(oldWidth) {
         DSPEW("old allocation width,height=%" PRIu32 ",%" PRIu32
@@ -1024,11 +1060,6 @@ void slWindow_compose(struct SlWindow *win) {
                 win->surface.allocation.width,
                 win->surface.allocation.height);
     } else {
-        // We should have all the old wayland client surface stuff too.
-        DASSERT(win->buffer);
-        DASSERT(win->wl_surface);
-        DASSERT(win->xdg_surface);
-
         DSPEW("tallied  allocation width,height = %" PRIu32 ",%" PRIu32,
                 win->surface.allocation.width,
                 win->surface.allocation.height);
@@ -1050,5 +1081,4 @@ void slWindow_compose(struct SlWindow *win) {
         ShrinkAllocatedHeight(&win->surface);
     else if(win->surface.allocation.height < win->surface.height)
         GrowAllocatedHeight(&win->surface);
-
 }

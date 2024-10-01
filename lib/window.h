@@ -109,15 +109,32 @@ struct SlSurface {
             uint32_t w, uint32_t h, uint32_t stride);
 
     // This is a user requested attribute of the surface.  It has two
-    // meaning that depend on if it is a top most surface or a widget.
+    // meanings that depend on if it is a top most surface or a widget.
     //
     // TOP MOST: For the top most surface parent this hide means do not
-    // render the window, or if it is rendered, hide (iconify) it.
+    // render the window. Iconify is a different thing.  The window
+    // manager controls iconify and a showing window can be iconified.
+    // This "hidden" state has nothing to do with the window manager's
+    // iconify state.
     //
     // WIDGET: For a widget (not a top most surface parent) this means do
     // not allocate space for this widget's surface.
     //
-    bool hide;
+    // We chose the word hide (and not show) because we wanted its default
+    // value, 0, to correspond to showing the widget/window.
+    //
+    // hide does not tell you if the current widget is displayed.  It only
+    // marks that the widget will have space allocated for it when the
+    // window and its' child widgets are composed.
+    //
+    // The gist of it is:
+    //
+    //   hidden widgets do not get allocated space.
+    //
+    // This is not some much like GTK's "show" and "hide".  Maybe it's
+    // more like GTK's "visible".
+    //
+    bool hidden; // hidden = false ==> showing --> make space for it
 };
 
 

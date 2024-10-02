@@ -48,15 +48,15 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/);
+            600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
     if(!win) return 1; // fail
 
     slWidget_create(slWindow_getSurface(win), 200, 100,
             SlGravity_None/*SlGravity_None => non-container*/,
             SlGreed_None,
-            0x20F0F000/* background color*/,
+            0x20F0F000/* ARGB background color*/,
             0/* borderWidth*/,
-            draw, false/*hidden*/);
+            draw, true/*showing*/);
 
     slWindow_compose(win);
 

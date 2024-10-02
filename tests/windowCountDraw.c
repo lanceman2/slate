@@ -40,7 +40,7 @@ int main(void) {
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    if(!slWindow_createToplevel(d, 100, 100, 100, 10, draw))
+    if(!slWindow_createToplevel(d, 100, 100, 100, 10, draw, true))
         return 1; // fail
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");

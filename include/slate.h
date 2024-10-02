@@ -120,18 +120,36 @@ SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
 SL_EXPORT struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride));
+            uint32_t w, uint32_t h, uint32_t stride),
+        bool showing);
 SL_EXPORT struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride));
+            uint32_t w, uint32_t h, uint32_t stride),
+        bool showing);
 SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
+// Calculate all the widget (and window) geometries, positions (x,y)
+// widths and heights.
+//
+// TODO: Remove this interface.
+//
 SL_EXPORT
 void slWindow_compose(struct SlWindow *win);
+
+// Also compose if needed.  Note, the changes may not be visible on the
+// computer monitor after this function call if it has dispatch==false.
+//
+// TODO: What about other dispatched events that come while we call
+// wl_display_dispatch() in this function?  Queuing them in yet another
+// queue (a slate event queue) would add complexity to libslate.so.
+//
+SL_EXPORT
+void slWindow_show(struct SlWindow *win, bool dispatch);
+
 
 // This not only defines the widget, it also packs it too.
 //
@@ -170,10 +188,6 @@ void slWindow_compose(struct SlWindow *win);
 //
 // Do we want a widget boundary/resize action built into the boundaries
 // between widgets?
-//
-// Widgets are showing or hidden.  Since that, we need a initial state of
-// "visibility" when the widget is created.  Do we want a show/hide action
-// built into it?
 //
 // Is there enough widget parameters specified here to make a reasonably
 // interactive display of widgets (rectangles)?  Of course we can add more

@@ -119,7 +119,7 @@ struct SlWidget *slWidget_create(
                               // children
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
                 uint32_t w, uint32_t h, uint32_t stride),
-        bool hide) {
+        bool showing) {
 
     ASSERT(parent, "slWidget_create() with no parent");
 
@@ -134,7 +134,7 @@ struct SlWidget *slWidget_create(
     widget->surface.backgroundColor = backgroundColor;
     widget->surface.borderWidth = borderWidth;
     widget->surface.draw = draw;
-    widget->surface.hidden = hide;
+    widget->surface.showing = showing;
     widget->greed = greed;
 
     // Add to the surface list.

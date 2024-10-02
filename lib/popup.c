@@ -62,7 +62,8 @@ static struct xdg_popup_listener xdg_popup_listener = {
 struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride)) {
+            uint32_t w, uint32_t h, uint32_t stride),
+        bool showing) {
 
     DASSERT(xdg_wm_base);
     DASSERT(parent);
@@ -77,6 +78,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
     struct SlWindow *win = &p->window;
     p->parent = (void *) parent;
     win->surface.type = SlSurfaceType_popup;
+    win->surface.showing = showing;
 
 
     CHECK(pthread_mutex_lock(&d->mutex));
@@ -117,7 +119,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         goto fail;
     }
 
-    if(ConfigureSurface(win))
+    if(showing && ConfigureSurface(win))
         goto fail;
 
     // Success:

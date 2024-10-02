@@ -65,7 +65,7 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->surface.allocation.pixels);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
-    DASSERT(win->surface.allocation.stride);
+    DASSERT(win->stride);
     DASSERT(win->sharedBufferSize);
     DASSERT(win->wl_callback == 0);
 
@@ -73,8 +73,7 @@ static inline void Draw(struct SlWindow *win) {
     // memory; and yes we do setup surface.allocation.width,height some
     // time before we make the shared memory pixel buffers.
     DASSERT(win->surface.allocation.height *
-            win->surface.allocation.stride ==
-            win->sharedBufferSize);
+            win->stride == win->sharedBufferSize);
 
 
     // Call the libslate.so users draw callback.  This draw() function
@@ -86,7 +85,7 @@ static inline void Draw(struct SlWindow *win) {
     int ret = win->surface.draw(win, win->surface.allocation.pixels,
             win->surface.allocation.width,
             win->surface.allocation.height,
-            win->surface.allocation.stride/*stride in bytes*/);
+            win->stride/*stride in bytes*/);
 
     switch(ret) {
         case 0:
@@ -154,7 +153,7 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
 
-    DASSERT(!win->surface.allocation.stride);
+    DASSERT(!win->stride);
     DASSERT(!win->sharedBufferSize);
 
     int stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
@@ -224,7 +223,7 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     // the allocated size, making the allocated size different from the
     // API user requested size.
     win->surface.allocation.pixels = pixels;
-    win->surface.allocation.stride = stride;
+    win->stride = stride;
     win->sharedBufferSize = size;
 
     // We have what we needed.  Inter-process shared memory at process
@@ -256,6 +255,22 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     // The compositor configures our surface, acknowledge the configure
     // event
     xdg_surface_ack_configure(win->xdg_surface, serial);
+
+    if(!win->buffer) {
+        DASSERT(!win->buffer);
+        DASSERT(!win->surface.allocation.pixels);
+        DASSERT(!win->sharedBufferSize);
+
+        if(RecreateBuffer(win)) {
+            win->configured = false;
+            // TODO: What to do for this error case?
+            return;
+        }
+    }
+
+    DASSERT(win->buffer);
+    DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->sharedBufferSize);
 
     if(!win->configured)
         win->configured = true;
@@ -681,13 +696,14 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     // When this is called seems to be variable.  Try to make the window
     // that size that the API user requested.
-    if(RecreateBuffer(win))
-        return true;
+    //if(RecreateBuffer(win))
+    //    return true;
+    //
+    //DASSERT(win->buffer);
+    //DASSERT(win->wl_surface);
+    //DASSERT(win->surface.allocation.pixels);
+    //DASSERT(win->sharedBufferSize);
 
-    DASSERT(win->buffer);
-    DASSERT(win->wl_surface);
-    DASSERT(win->surface.allocation.pixels);
-    DASSERT(win->sharedBufferSize);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -761,7 +777,8 @@ bool ConfigureSurface(struct SlWindow *win) {
 struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride)) {
+            uint32_t w, uint32_t h, uint32_t stride),
+        bool showing) {
 
     struct SlToplevel *t = calloc(1, sizeof(*t));
     ASSERT(t, "calloc(1,%zu) failed", sizeof(*t));
@@ -772,7 +789,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 
     // Some defaults:
     win->surface.gravity = SlGravity_One;
-    win->surface.hidden = false;
+    win->surface.showing = showing;
 
 
     CHECK(pthread_mutex_lock(&d->mutex));
@@ -798,7 +815,9 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
-    if(ConfigureSurface(win))
+    // We will call ConfigureSurface() at a later time if the window is
+    // not set as "showing" yet.
+    if(showing && ConfigureSurface(win))
         goto fail;
 
     // Success:
@@ -859,15 +878,15 @@ AddSizeOfChildren(struct SlSurface *s) {
         DASSERT(!s->lastChild);
         // This is a leaf node.
         //
-        if(s->hidden) {
-            // No soup for you.  In that, you don't get what you came in
-            // here for.
-            s->allocation.width  = 0;
-            s->allocation.height = 0;
-        } else {
+        if(s->showing) {
             // We start by giving it what it requests.
             s->allocation.width  = s->width;
             s->allocation.height = s->height;
+        } else {
+            // No soup for you (from Sinfeld).  In that, you don't get
+            // what you came in here for.
+            s->allocation.width  = 0;
+            s->allocation.height = 0;
         }
  
         return;
@@ -876,7 +895,7 @@ AddSizeOfChildren(struct SlSurface *s) {
     // This is a parent node.
     DASSERT(s->lastChild);
 
-    if(s->hidden) {
+    if(!s->showing) {
         s->allocation.width  = 0;
         s->allocation.height = 0;
         return;
@@ -1032,20 +1051,12 @@ void slWindow_compose(struct SlWindow *win) {
     // Save theses old values.  We need to see if they change.
     uint32_t oldWidth = win->surface.allocation.width,
             oldHeight = win->surface.allocation.height;
+    bool oldShowing = win->surface.showing;
 
-
-    if(win->surface.hidden) {
-        // It's a top level window that is hidden.
-        win->surface.allocation.width  = 0;
-        win->surface.allocation.height = 0;
-        // We'll just ignore the rest of the
-        // surface.allocation::width.height values that are in the
-        // rest of the widget tree.
-        //
-        // There is no reason to compose (allocate) this window if it is
-        // hidden.
-        return;
-    }
+    if(!oldShowing)
+        // We must pretend that the window is showing so we get some
+        // width, and height, for the window.
+        win->surface.showing = true;
 
 
     AddSizeOfChildren(&win->surface);
@@ -1068,10 +1079,6 @@ void slWindow_compose(struct SlWindow *win) {
     // Now we have all the size allocations figured out as if we could
     // give all the widgets the sizes them requested.
 
-    if(win->surface.allocation.width == oldWidth &&
-            win->surface.allocation.height == oldHeight)
-         return;
-
     if(win->surface.allocation.width > win->surface.width)
         ShrinkAllocatedWidth(&win->surface);
     else if(win->surface.allocation.width < win->surface.width)
@@ -1081,4 +1088,10 @@ void slWindow_compose(struct SlWindow *win) {
         ShrinkAllocatedHeight(&win->surface);
     else if(win->surface.allocation.height < win->surface.height)
         GrowAllocatedHeight(&win->surface);
+
+    // We know what we want for the width and height of the window and its
+    // widgets.   We need to put back the showing state of the window if
+    // it's not showing.
+    if(!oldShowing)
+        win->surface.showing = oldShowing;
 }

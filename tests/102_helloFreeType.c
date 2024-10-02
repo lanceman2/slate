@@ -178,7 +178,7 @@ fprintf(stderr, "\n");
     if(!d) return 1; // fail
 
     struct SlWindow *w = slWindow_createToplevel(
-            d, 800, 700, 10, 10, draw);
+            d, 800, 700, 10, 10, draw, true);
     if(!w) return 1; // fail
 
 #ifdef LOOP

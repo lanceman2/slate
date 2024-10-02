@@ -47,24 +47,6 @@ struct SlAllocation {
     // start for the case of a window, and "pixels" points to the top left
     // corner of the rectangle for a widget that is inside of a window.
     uint32_t *pixels;
-
-    // "stride" is the distance in bytes from positions X,Y to get to the
-    // next (X, Y+1) position at a same X value.  It's used to loop back
-    // to the next Y row in the pixels data.
-    //
-    // Think of X position as increasing as you move along (increasing X)
-    // a row.
-    //
-    // "stride" is 4*width for a window because each pixel is 4 bytes in
-    // size and there is no memory padding at end of a row.  It just works
-    // out that way.  For a widget that is not as wide as the window that
-    // contains it the stride is larger than 4*width where width is the
-    // width of the widget.
-    //
-    // what-does-stride-mean: How long with this URL last?:
-    // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
-    //
-    uint32_t stride;
 };
 
 
@@ -111,30 +93,34 @@ struct SlSurface {
     // This is a user requested attribute of the surface.  It has two
     // meanings that depend on if it is a top most surface or a widget.
     //
-    // TOP MOST: For the top most surface parent this hide means do not
-    // render the window. Iconify is a different thing.  The window
-    // manager controls iconify and a showing window can be iconified.
-    // This "hidden" state has nothing to do with the window manager's
-    // iconify state.
+    // TOP MOST: For the top most surface parent this hide (showing == 0)
+    // means do not render the window. Iconify is a different thing.  The
+    // window manager controls iconify and a showing window can be
+    // iconified.  This "showing/hidden" state has nothing to do with the
+    // window manager's iconify state.
     //
-    // WIDGET: For a widget (not a top most surface parent) this means do
-    // not allocate space for this widget's surface.
+    // WIDGET: For a widget (not a top most surface parent) showing == 0
+    // means do not allocate space for this widget's surface.  If showing
+    // == 0 then do not allocate space for this widget's surface or it's
+    // children either.  If a widget has at parent with showing == 0 then
+    // the widget will not get allocated space or be shown in the display.
     //
-    // We chose the word hide (and not show) because we wanted its default
-    // value, 0, to correspond to showing the widget/window.
+    // We chose the word "showing" because we wanted its default value, 0,
+    // to correspond to not showing.  The widget/window can be showing
+    // after all its children added to it.
     //
-    // hide does not tell you if the current widget is displayed.  It only
+    // showing does not tell you if the current widget is displayed.  It only
     // marks that the widget will have space allocated for it when the
-    // window and its' child widgets are composed.
+    // window and its' child widgets are composed and displayed.
     //
     // The gist of it is:
     //
-    //   hidden widgets do not get allocated space.
+    //   hidden (showing == 0) widgets do not get allocated space.
     //
-    // This is not some much like GTK's "show" and "hide".  Maybe it's
+    // This is not so much like GTK's "show" and "hide".  Maybe it's
     // more like GTK's "visible".
     //
-    bool hidden; // hidden = false ==> showing --> make space for it
+    bool showing; // showing == true --> make space for it
 };
 
 
@@ -142,6 +128,26 @@ struct SlWindow {
 
     // inherit slate surface
     struct SlSurface surface;
+
+    // "stride" is the distance in bytes from positions X,Y to get to the
+    // next (X, Y+1) position at a same X value.  It's used to loop back
+    // to the next Y row in the pixels data.
+    //
+    // Think of X position as increasing as you move along (increasing X)
+    // a row.
+    //
+    // "stride" is 4*width for a window because each pixel is 4 bytes in
+    // size and there is no memory padding at end of a row.  It just works
+    // out that way.  For a widget that is not as wide as the window that
+    // contains it the stride is larger than 4*width where width is the
+    // width of the widget.
+    //
+    // what-does-stride-mean: How long with this URL last?:
+    // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
+    //
+    // The child widgets have this same stride.
+    //
+    uint32_t stride;
 
     // Size in bytes of the current mmap() shared memory used with the
     // wayland compositor and this wayland client.  This is a function of

@@ -69,13 +69,12 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *w = slWindow_createToplevel(
-            d, 500, 400, 10, 10, 0);
+            d, 500, 400, 10, 10, 0, true/*showing*/);
     if(!w) return 1; // fail
 
     struct SlWindow *p = slWindow_createPopup(
-            w, 400, 300, -4400, -10000, draw);
+            w, 400, 300, -4400, -10000, draw, true/*showing*/);
     if(!p) return 1; // fail
-
 
     while(slDisplay_dispatch(d));
 

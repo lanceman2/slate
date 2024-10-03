@@ -68,7 +68,6 @@ struct SlSurface {
     //
     struct SlAllocation allocation;
 
-
     // We keep a linked list (tree like) graph of surfaces starting at a
     // window with parent == 0.  The top level parent windows are owned by
     // a display.  Displays are owned by a static global list of displays

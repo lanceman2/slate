@@ -27,6 +27,7 @@ libslate.so_SOURCES :=\
  debug.c\
  display.c\
  window.c\
+ slWindow_show.c\
  popup.c\
  drawingUtils.c\
  cairoDraw.c\

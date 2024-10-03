@@ -96,10 +96,16 @@ void DestroyWidget(struct SlSurface *surface) {
     while(surface->lastChild)
         DestroyWidget(surface->lastChild);
 
-    RemoveFromSurfaceList(surface->parent, surface);
 
-    struct SlWidget *w = (struct SlWidget *) (
-        ((uint8_t *) surface) - offsetof(struct SlWidget, surface));
+    struct SlWidget *w = (void *) ((uint8_t *) surface -
+            offsetof(struct SlWidget, surface));
+
+    if(!w->window->needReconfigure)
+        w->window->needReconfigure = true;
+    if(!w->window->needAllocate)
+        w->window->needAllocate = true;
+
+    RemoveFromSurfaceList(surface->parent, surface);
 
     DZMEM(w, sizeof(*w));
     free(w);
@@ -137,20 +143,23 @@ struct SlWidget *slWidget_create(
     widget->surface.showing = showing;
     widget->greed = greed;
 
+    // Add to the surface list.
+    AddToSurfaceList(parent, &widget->surface);
+
     // Find the window this widget is in.
     struct SlSurface *topSurface = parent;
     while(topSurface->parent)
         topSurface = topSurface->parent;
     DASSERT(topSurface->type < SlSurfaceType_widget);
-    struct SlWindow *win = (struct SlWindow *)
+    struct SlWindow *win = (void *)
         (((uint8_t *)topSurface) - offsetof(struct SlWindow, surface));
-    // Mark this window as not consistent in these two ways.
-    win->needAllocate = true;
-    win->needReconfigure = true;
 
-    // Add to the surface list.
-    AddToSurfaceList(parent, &widget->surface);
+    widget->window = win;
 
+    if(!win->needReconfigure)
+        win->needReconfigure = true;
+    if(!win->needAllocate)
+        win->needAllocate = true;
 
     // MORE CODE HERE ..........
 

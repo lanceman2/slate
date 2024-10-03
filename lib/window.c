@@ -14,6 +14,7 @@
 #include "widget.h"
 #include "display.h"
 #include "shm.h"
+#include "../include/slate_drawingUtils.h"
 
 
 struct SlSurface *slWindow_getSurface(struct SlWindow *window) {
@@ -57,7 +58,6 @@ void PushPixels(struct SlWindow *win) {
 static inline void Draw(struct SlWindow *win) {
 
     DASSERT(win);
-    DASSERT(win->surface.draw);
     DASSERT(win->wl_surface);
     DASSERT(win->buffer);
     DASSERT(win->surface.width);
@@ -75,31 +75,56 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->surface.allocation.height *
             win->stride == win->sharedBufferSize);
 
-
     // Call the libslate.so users draw callback.  This draw() function
     // can set the win->surface.pixels pixel value to what ever it wants to.
     // These values will not be seen until the compositor process
     // decides to read these pixels from the shared memory.  In this
     // process the shared memory is at virtual address win->surface.pixels.
-
-    int ret = win->surface.draw(win, win->surface.allocation.pixels,
+    //
+    sl_drawFilledRectangle(win->surface.allocation.pixels/*starting pixel*/,
+            0/*x*/, 0/*y*/,
             win->surface.allocation.width,
             win->surface.allocation.height,
-            win->stride/*stride in bytes*/);
+            win->stride, win->surface.backgroundColor);
 
-    switch(ret) {
-        case 0:
-            // We will continue to call this draw in this frame thingy
-            // when the time for the next frame happens.
-            //
-            // TODO: This can fail, so ...
-            AddFrameListener(win);
-            break;
-        case 1:
-            // stop calling this draw function and remove the draw
-            // function.
-            win->surface.draw = 0;
+    if(win->surface.draw) {
+
+        int ret = win->surface.draw(win, win->surface.allocation.pixels,
+                win->surface.allocation.width,
+                win->surface.allocation.height,
+                win->stride/*stride in bytes*/);
+
+        switch(ret) {
+            case 0:
+                // We will continue to call this draw in this frame thingy
+                // when the time for the next frame happens.
+                //
+                // TODO: This can fail, so ...
+                AddFrameListener(win);
+                break;
+            case 1:
+                // stop calling this draw function and remove the draw
+                // function.
+                win->surface.draw = 0;
+        }
     }
+
+    // Now draw the widgets on top of what's there, if there are any
+    // widgets.
+    //
+    // TODO: Draw just the regions that we need to, without overdrawing???
+    //
+    for(struct SlSurface *s = win->surface.firstChild; s;
+            s = s->nextSibling) {
+        if(s->showing) {
+            DASSERT(s->allocation.width);
+            DASSERT(s->allocation.height);
+        } else {
+            DASSERT(!s->allocation.width);
+            DASSERT(!s->allocation.height);
+        }
+    }
+
 }
 
 
@@ -661,6 +686,8 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     win->surface.backgroundColor = 0xA0A0FFA0;
     // default window borderWidth
     win->surface.borderWidth = 4;
+    win->needAllocate = true;
+    win->needReconfigure = true;
 
     win->wl_surface = wl_compositor_create_surface(compositor);
     if(!win->wl_surface) {
@@ -710,7 +737,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 }
 
 
-bool ConfigureSurface(struct SlWindow *win) {
+bool ConfigureSurface(struct SlWindow *win, bool dispatch) {
 
     // Perform the initial commit and wait for the first configure event
     // for this surface in this slWindow.
@@ -744,7 +771,9 @@ bool ConfigureSurface(struct SlWindow *win) {
 
     PostDrawDamage(win);
 
-#if 1
+
+    if(!dispatch) return false;
+
     // We have seen that the window is not visible on the desktop yet (at
     // least not always); at this time.  Why?  We do not know.
     //
@@ -768,7 +797,9 @@ bool ConfigureSurface(struct SlWindow *win) {
             return true;
         }
     }
-#endif
+
+    // reset
+    win->framed = false;
 
     return false; // success
 }
@@ -815,9 +846,15 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
+    DASSERT(win->needAllocate);
+    DASSERT(win->needReconfigure);
+    slWindow_compose(win);
+    DASSERT(!win->needAllocate);
+    DASSERT(win->needReconfigure);
+
     // We will call ConfigureSurface() at a later time if the window is
     // not set as "showing" yet.
-    if(showing && ConfigureSurface(win))
+    if(showing && ConfigureSurface(win, true))
         goto fail;
 
     // Success:
@@ -869,31 +906,65 @@ void slWindow_destroy(struct SlWindow *w) {
 // Kind-of a requested size based on all children and parent border
 // widths.
 //
+// We do not overwrite the SlSurface::showing. That is set somehow by the
+// API user.  Hence we needed the function parameter argument
+// parentShowing.
+//
+// We traverse the widget tree via function recursion.  SlSurface is a
+// widget (or window for the first to call).
+//
 void
-AddSizeOfChildren(struct SlSurface *s) {
+AddSizeOfChildren(struct SlSurface *s, bool parentShowing) {
 
     DASSERT(s);
+
+    // Initialize this, s->showingChildren, now.  It may not be correct
+    // now but we will change it soon.
+    //
+    if(s->firstChild)
+        // showingChildren may get set again later in this function:
+        s->showingChildren = s->showing;
+    else
+        // There are no children, so no children are showing.
+        s->showingChildren = false;
 
     if(!s->firstChild) {
         DASSERT(!s->lastChild);
         // This is a leaf node.
         //
-        if(s->showing) {
+        if(s->showing && parentShowing) {
             // We start by giving it what it requests.
+            //
+            // This surface may be one that could have children but does
+            // not yet.
+            //
             s->allocation.width  = s->width;
             s->allocation.height = s->height;
         } else {
-            // No soup for you (from Sinfeld).  In that, you don't get
-            // what you came in here for.
+            // No space for this surface, s.
             s->allocation.width  = 0;
             s->allocation.height = 0;
         }
- 
         return;
     }
 
+
     // This is a parent node.
     DASSERT(s->lastChild);
+
+    // See if this parent surface, s, has any showing children; otherwise
+    // this surface (and all sub-children) will not be visually present,
+    // or get a width/height allocation.
+    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling) {
+        if(sf->showing && !s->showingChildren)
+            // We have at least one visible child.
+            s->showingChildren = true;
+        // Call stack dive toward the child, sf.
+        AddSizeOfChildren(sf, s->showing && parentShowing);
+    }
+
+    // We now have the size (width,height) of all the children of surface,
+    // s.
 
     if(!s->showing) {
         s->allocation.width  = 0;
@@ -901,20 +972,22 @@ AddSizeOfChildren(struct SlSurface *s) {
         return;
     }
 
-    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling)
-        // Stack dive toward the children.
-        AddSizeOfChildren(sf);
+    if(!s->showingChildren) {
+        // We still give an empty container space if it requests it.
+        s->allocation.width  = s->width;
+        s->allocation.height = s->height;
+        return;
+    }
 
     // Now this surface, s, has all its children's allocations tallied.
+    // Time to tally this surfaces allocation (width and height) for
+    // a container that is confirmed to have visible children.
 
-    uint32_t borderWidth = s->borderWidth;
-
-    // Tally width,height based on child requested width,height and
+    // Tally width,height based on children requested width,height and
     // parent border widths.
     //
     uint32_t *width  = &(s->allocation.width);
     uint32_t *height = &(s->allocation.height);
-
 
     // Slate container surfaces (widgets and windows) may request space
     // for themselves in addition to space for their children.  A common
@@ -924,18 +997,24 @@ AddSizeOfChildren(struct SlSurface *s) {
     *width  = s->width;
     *height = s->height;
 
+    // I repeat: Now we know this surface, s, has a least one showing
+    // child.
+
+    uint32_t borderWidth = s->borderWidth;
+
     switch(s->gravity) {
 
         case SlGravity_TB:// top to bottom
         case SlGravity_BT:// bottom to top
 
             for(struct SlSurface *sf = s->firstChild; sf;
-                    sf = sf->nextSibling) {
-                // widget height plus a border
-                *height += (sf->allocation.height + borderWidth);
-                if(*width < sf->allocation.width)
-                    *width = sf->allocation.width;
-            }
+                    sf = sf->nextSibling) 
+                if(sf->showing) {
+                    // widget height plus a border
+                    *height += (sf->allocation.height + borderWidth);
+                    if(*width < sf->allocation.width)
+                        *width = sf->allocation.width;
+                }
             // border on the top (or bottom)
             *height += borderWidth;
             // Now we have the height additions.
@@ -949,12 +1028,13 @@ AddSizeOfChildren(struct SlSurface *s) {
         case SlGravity_RL:// right to left
 
             for(struct SlSurface *sf = s->firstChild; sf;
-                    sf = sf->nextSibling) {
-                // widget width plus a border
-                *width += (sf->allocation.width + borderWidth);
-                if(*height < sf->allocation.height)
-                    *height = sf->allocation.height;
-            }
+                    sf = sf->nextSibling) 
+                if(sf->showing) {
+                    // widget width plus a border
+                    *width += (sf->allocation.width + borderWidth);
+                    if(*height < sf->allocation.height)
+                        *height = sf->allocation.height;
+                }
             // border on an end.
             *width += borderWidth;
             // Now we have the width additions.
@@ -968,64 +1048,83 @@ AddSizeOfChildren(struct SlSurface *s) {
             // By definition there should be one child for a surface with
             // SlGravity_One
             ASSERT(s->firstChild == s->lastChild);
+            ASSERT(s->firstChild->showing);
 
             *width  += (s->firstChild->allocation.width  + 2 * borderWidth);
             *height += (s->firstChild->allocation.height + 2 * borderWidth);
             break;
 
         case SlGravity_None:
-
-            ASSERT(0, "A surface with SlGravity_None has children");
+            // We should have excluded this case.
+            ASSERT(0, "A surface with SlGravity_None has children WTF");
             break;
 
         default:
-            ASSERT(0, "Write more code here");
+            // Just a dumb-ass code check...
+            ASSERT(0, "Write more code here for gravity=%d", s->gravity);
     }
 }
 
 
 static void
-ShrinkAllocatedWidth(struct SlSurface *s) {
-
+ShrinkAllocatedWidth(struct SlSurface *s, uint32_t max) {
 
     DASSERT(s);
-    return;
+    DASSERT(max);
 
-    if(!s->firstChild) {
-        DASSERT(!s->lastChild);
-        // This is a leaf child node.
-        //
-        // We start by giving it what it requests.
-        s->allocation.width  = s->width;
-        s->allocation.height = s->height;
-        return;
+WARN("NEED MORE CODE HERE");
+
+    // The s->allocation.width will be zero if s not showing.
+    if(s->allocation.width > max) {
+        DASSERT(s->showing);
+
+        // Shrink this surface, s.
+        if(s->firstChild && s->showingChildren) {
+            // This is a parent node.
+            DASSERT(s->lastChild);
+
+            switch(s->gravity) {
+
+                case SlGravity_TB:// top to bottom
+                    break;
+                case SlGravity_BT:// bottom to top
+                    break;
+                case SlGravity_LR:// left to right
+                    break;
+                case SlGravity_RL:// right to left
+                    break;
+                case SlGravity_One:
+                    ASSERT(s->firstChild == s->lastChild);
+                    break;
+                case SlGravity_None:
+                    DASSERT(0, "A surface with SlGravity_None has children");
+                    break;
+                default:
+                    ASSERT(0, "Write more code here");
+            }
+        } else {
+            // It's a parent with not showing children, or a leaf node.
+            //s->allocation.width = max;
+        }
     }
-
-    // This is a parent node.
-    DASSERT(s->lastChild);
-    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling) {
-        ERROR();
-        // Stack dive toward the children.
-        //ShrinkAllocatedWidth(sf);
-    }
 }
 
 static void
-GrowAllocatedWidth(struct SlSurface *s) {
+GrowAllocatedWidth(struct SlSurface *s, uint32_t min) {
 
     DASSERT(s);
 
 }
 
 static void
-ShrinkAllocatedHeight(struct SlSurface *s) {
+ShrinkAllocatedHeight(struct SlSurface *s, uint32_t max) {
 
     DASSERT(s);
 
 }
 
 static void
-GrowAllocatedHeight(struct SlSurface *s) {
+GrowAllocatedHeight(struct SlSurface *s, uint32_t min) {
 
     DASSERT(s);
 
@@ -1041,12 +1140,10 @@ void slWindow_compose(struct SlWindow *win) {
     DASSERT(win);
     ASSERT(win->surface.parent == 0, "Not a top level window");
 
-    if(!win->surface.firstChild) {
-        DASSERT(!win->surface.lastChild);
-        INFO("This window has no widgets in it");
+    if(!win->needAllocate) {
+        WARN("This window is composed already");
         return;
     }
-    DASSERT(win->surface.lastChild);
 
     // Save theses old values.  We need to see if they change.
     uint32_t oldWidth = win->surface.allocation.width,
@@ -1058,8 +1155,7 @@ void slWindow_compose(struct SlWindow *win) {
         // width, and height, for the window.
         win->surface.showing = true;
 
-
-    AddSizeOfChildren(&win->surface);
+    AddSizeOfChildren(&win->surface, true);
 
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
@@ -1077,21 +1173,42 @@ void slWindow_compose(struct SlWindow *win) {
     }
 
     // Now we have all the size allocations figured out as if we could
-    // give all the widgets the sizes them requested.
+    // give all the widgets the sizes they request; but we cannot
+    // necessarily give all the widgets the sizes they request.
 
     if(win->surface.allocation.width > win->surface.width)
-        ShrinkAllocatedWidth(&win->surface);
+        ShrinkAllocatedWidth(&win->surface, win->surface.width);
     else if(win->surface.allocation.width < win->surface.width)
-        GrowAllocatedWidth(&win->surface);
+        GrowAllocatedWidth(&win->surface, win->surface.width);
 
     if(win->surface.allocation.height > win->surface.height)
-        ShrinkAllocatedHeight(&win->surface);
+        ShrinkAllocatedHeight(&win->surface, win->surface.height);
     else if(win->surface.allocation.height < win->surface.height)
-        GrowAllocatedHeight(&win->surface);
+        GrowAllocatedHeight(&win->surface, win->surface.height);
+
+
+    //TODO: remove the borders from the allocation.
+
+    //TODO: calculate the start pixel address.
 
     // We know what we want for the width and height of the window and its
     // widgets.   We need to put back the showing state of the window if
     // it's not showing.
     if(!oldShowing)
         win->surface.showing = oldShowing;
+
+    win->needAllocate = false;
+    win->needReconfigure = true;
+}
+
+
+void slWindow_show(struct SlWindow *win, bool dispatch) {
+
+    DASSERT(win);
+
+    win->surface.showing = true;
+
+    if(ConfigureSurface(win, dispatch)) {
+        DASSERT(0, "Oh boy");
+    }
 }

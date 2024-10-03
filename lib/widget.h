@@ -4,7 +4,8 @@
 //
 struct SlWidget {
 
-    // inherit slate surface
+    // inherit slate surface.  We keep this first in the structure so
+    // that we may call slWidget_create((void *) widget, ...)
     struct SlSurface surface;
 
     // 2D space greediness.  0 mean that this widget does not feel the

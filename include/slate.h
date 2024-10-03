@@ -133,7 +133,9 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
 // Calculate all the widget (and window) geometries, positions (x,y)
-// widths and heights.
+// widths and heights; and that's all.  Just after calling this the widths
+// and heights may not be consistent with what is currently being
+// displayed.
 //
 // TODO: Remove this interface.
 //

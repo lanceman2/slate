@@ -7,21 +7,26 @@
 
 enum SlSurfaceType {
 
-    // First window types:
-    SlSurfaceType_topLevel = 1, // From xdg_surface_get_toplevel()
+    // First are window types:
+    SlSurfaceType_topLevel = 0xFB57, // From xdg_surface_get_toplevel()
     SlSurfaceType_popup, // From wl_shell_surface_set_popup()
 
     //SlSurfaceType_sub, // From wl_subcompositor_get_subsurface()
     //SlSurfaceType_fullscreen, // ??? fullscreen
 
-    SlSurfaceType_widget // not a window
+    // SlSurfaceType_widget MUST BE LAST AND LARGEST.
+    SlSurfaceType_widget // The only surface that is not a window
 };
 
 
 // Allocation is all the parameters that need to change when a window (and
-// the widgets there-in) is resized, or first configured.  Similar to what
-// GTK calls an allocation (theirs is just the rectangle), but we include
-// the starting pixel pointer and stride.
+// the widgets there-in) is resized, or first configured (except stride).
+// Similar to what GTK calls an allocation (theirs is just the rectangle),
+// but we include the starting pixel pointer.  The stride that is needed
+// to draw is the same for all the widgets in the window, so it's not in
+// this SlAllocation thingy.
+//
+// SlAllocation is part of SlSurface.
 //
 struct SlAllocation {
 
@@ -85,13 +90,27 @@ struct SlSurface {
 
 
     uint32_t backgroundColor;
+    // This surface will add this width of border between all its
+    // children.  This is ignored if there are no children.
     uint32_t borderWidth;
 
     int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
 
-    // This is a user requested attribute of the surface.  It has two
-    // meanings that depend on if it is a top most surface or a widget.
+    // State saved after the first tree traversal so we have it for the
+    // next traversal, in slWindow_compose() function which computes
+    // widget width and height allocations.
+    //
+    // The SlSurface::showing flag is set and kept based on the API user
+    // calls, but "showingChildren" is set based on looking at the widget
+    // tree as we traverse it.  "showingChildren" saves having to do more
+    // widget tree traversals, at the cost of (one bool) memory.
+    //
+    bool showingChildren;
+
+    // This, "showing", is a API user requested attribute of the surface.
+    // It has two meanings that depend on if it is a top most surface
+    // (window) or a widget.
     //
     // TOP MOST: For the top most surface parent this hide (showing == 0)
     // means do not render the window. Iconify is a different thing.  The
@@ -126,7 +145,8 @@ struct SlSurface {
 
 struct SlWindow {
 
-    // inherit slate surface
+    // inherit slate surface.  We keep this first in the structure so
+    // that we may call slWidget_create((void *) window, ...)
     struct SlSurface surface;
 
     // "stride" is the distance in bytes from positions X,Y to get to the
@@ -174,7 +194,6 @@ struct SlWindow {
     // (firstChild, lastChild) windows.
     struct SlWindow *prev, *next;
 
-    bool configured, open, framed;
 
     // Negative values put the window at a root window edge.  Examples:
     //   -1,0  ==> right,top
@@ -182,6 +201,18 @@ struct SlWindow {
     //   -1,-1 ==> right,bottom
     //
     int32_t x, y;
+
+    bool configured, open, framed;
+
+    // When the user is creating and assembling widgets into a window the width and
+    // height of widgets need to be calculated via slWindow_compose().
+    bool needAllocate;
+
+    // When the wayland pixel buffer needs recreating.  If needAllocate is
+    // true then this needs to be true too.  So we have just 3 valid
+    // states for the two flags needAllocate and needReconfigure.
+    //
+    bool needReconfigure; // TODO: merge this with configure flag?
 };
 
 
@@ -230,7 +261,7 @@ extern void AddChild(struct SlToplevel *t, struct SlWindow *win);
 //
 extern void RemoveChild(struct SlToplevel *t, struct SlWindow *win);
 
-extern bool ConfigureSurface(struct SlWindow *win);
+extern bool ConfigureSurface(struct SlWindow *win, bool dispatch);
 
 // TODO: Damage just a rectangular region of interest.
 extern void PushPixels(struct SlWindow *win);

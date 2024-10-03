@@ -28,12 +28,15 @@ libslate.so_SOURCES :=\
  display.c\
  window.c\
  popup.c\
+ drawingUtils.c\
  cairoDraw.c\
  findFont.c\
  font.c\
  shm.c\
  widget.c
-libslate.so_CPPFLAGS := $(WL_CFLAGS) $(CAIRO_CFLAGS) $(FONTCONFIG_CFLAGS)
+libslate.so_CPPFLAGS :=\
+ $(WL_CFLAGS) $(CAIRO_CFLAGS) $(FONTCONFIG_CFLAGS)\
+ -DSLATE_LIB_CODE
 libslate.so_CFLAGS :=\
  -fvisibility=hidden\
  -DSL_EXPORT="__attribute__((visibility(\"default\"))) extern"\

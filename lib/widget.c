@@ -137,6 +137,17 @@ struct SlWidget *slWidget_create(
     widget->surface.showing = showing;
     widget->greed = greed;
 
+    // Find the window this widget is in.
+    struct SlSurface *topSurface = parent;
+    while(topSurface->parent)
+        topSurface = topSurface->parent;
+    DASSERT(topSurface->type < SlSurfaceType_widget);
+    struct SlWindow *win = (struct SlWindow *)
+        (((uint8_t *)topSurface) - offsetof(struct SlWindow, surface));
+    // Mark this window as not consistent in these two ways.
+    win->needAllocate = true;
+    win->needReconfigure = true;
+
     // Add to the surface list.
     AddToSurfaceList(parent, &widget->surface);
 

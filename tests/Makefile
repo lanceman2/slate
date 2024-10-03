@@ -123,6 +123,16 @@ widget_CPPFLAGS := $(CAIRO_CFLAGS) -DLOOP
 160_widget_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
 160_widget_CPPFLAGS := $(CAIRO_CFLAGS)
 
+widgetMany1_SOURCES := widgetMany1.c
+widgetMany1_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+widgetMany1_CPPFLAGS := $(CAIRO_CFLAGS) -DLOOP
+
+# non looping version of widget
+163_widgetMany1_SOURCES := widgetMany1.c
+163_widgetMany1_LDFLAGS := $(SL_LIB) $(CAIRO_LDFLAGS)
+163_widgetMany1_CPPFLAGS := $(CAIRO_CFLAGS)
+
+
 
 ifneq ($(PANGOCAIRO_LDFLAGS),)
 pangocairo_SOURCES := pangocairo.c ../lib/debug.c

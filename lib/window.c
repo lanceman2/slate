@@ -80,14 +80,46 @@ static inline void Draw(struct SlWindow *win) {
             win->surface.allocation.height,
             win->stride, win->surface.backgroundColor);
 
+    int drawRet;
+
     if(win->surface.draw) {
 
-        int ret = win->surface.draw(win, win->surface.allocation.pixels,
+        // Draw the window first.
+        drawRet = win->surface.draw(win, win->surface.allocation.pixels,
                 win->surface.allocation.width,
                 win->surface.allocation.height,
                 win->stride/*stride in bytes*/);
+    }
 
-        switch(ret) {
+    // Draw children widgets:
+    //
+    // Now draw the widgets on top of what's there, if there are any
+    // widgets.
+    //
+    // TODO: Draw just the regions that we need to, without overdrawing???
+    //
+    for(struct SlSurface *s = win->surface.firstChild; s;
+            s = s->nextSibling) {
+        if(s->showing) {
+            DASSERT(s->allocation.width);
+            DASSERT(s->allocation.height);
+
+
+
+
+        } else {
+            DASSERT(!s->allocation.width);
+            DASSERT(!s->allocation.height);
+
+
+
+        }
+    }
+
+
+    if(win->surface.draw) {
+
+        switch(drawRet) {
             case 0:
                 // We will continue to call this draw in this frame thingy
                 // when the time for the next frame happens.
@@ -101,23 +133,6 @@ static inline void Draw(struct SlWindow *win) {
                 win->surface.draw = 0;
         }
     }
-
-    // Now draw the widgets on top of what's there, if there are any
-    // widgets.
-    //
-    // TODO: Draw just the regions that we need to, without overdrawing???
-    //
-    for(struct SlSurface *s = win->surface.firstChild; s;
-            s = s->nextSibling) {
-        if(s->showing) {
-            DASSERT(s->allocation.width);
-            DASSERT(s->allocation.height);
-        } else {
-            DASSERT(!s->allocation.width);
-            DASSERT(!s->allocation.height);
-        }
-    }
-
 }
 
 

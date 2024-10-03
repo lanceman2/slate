@@ -100,10 +100,8 @@ void DestroyWidget(struct SlSurface *surface) {
     struct SlWidget *w = (void *) ((uint8_t *) surface -
             offsetof(struct SlWidget, surface));
 
-    if(!w->window->needReconfigure)
-        w->window->needReconfigure = true;
-    if(!w->window->needAllocate)
-        w->window->needAllocate = true;
+    w->window->needReconfigure = true;
+    w->window->needAllocate = true;
 
     RemoveFromSurfaceList(surface->parent, surface);
 
@@ -156,10 +154,8 @@ struct SlWidget *slWidget_create(
 
     widget->window = win;
 
-    if(!win->needReconfigure)
-        win->needReconfigure = true;
-    if(!win->needAllocate)
-        win->needAllocate = true;
+    win->needReconfigure = true;
+    win->needAllocate = true;
 
     // MORE CODE HERE ..........
 

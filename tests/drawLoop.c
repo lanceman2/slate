@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "../include/slate.h"
 #include "../include/slate_debug.h"
@@ -12,7 +13,7 @@ void catcher(int sig) {
 }
 
 
-static int draw_count = 0;
+static uint32_t draw_count = 0;
 
 static
 int draw(struct SlWindow *win, uint32_t *pixels,
@@ -22,10 +23,15 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     // that one needs to add to the address in the first pixel of a row in
     // order to go to the address of the first pixel of the next row.
     draw_count++;
-    fprintf(stderr, "               draw_count=%d    \r", draw_count);
+    fprintf(stderr, "               draw_count=%" PRIu32 "   \r",
+            draw_count);
 
-    // We change something randomly.
-    uint8_t rd = rand();
+    uint32_t midColor = 0xC10000FA;
+
+#define FRAMES  100
+
+    if((draw_count % (FRAMES*2)) < FRAMES)
+        midColor = 0x00010101;
 
     // Each pixel it 4 bytes or the sizeof(uint32_t) = 4 bytes.
     uint32_t *pix = pixels;
@@ -41,8 +47,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
             if(x > 400)
                 *pix = 0x0AFF0000;
-            else if(x > 220)
-                *pix = 0x0A0000FF - rd;
+            else if(x > 220 && y < 500)
+                *pix = midColor;
             else
                 *pix = 0x0A00FF00;
 

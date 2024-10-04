@@ -60,7 +60,7 @@ int main(void) {
 
     slWindow_show(win, true/*dispatch*/);
 
-    fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");
+    fprintf(stderr, "\nPress Key <Alt-F4> on the new window to exit\n\n");
 
 #ifdef LOOP
     while(slDisplay_dispatch(d));

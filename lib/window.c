@@ -312,6 +312,12 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     DASSERT(win);
     DASSERT(win->xdg_surface);
     DASSERT(win->xdg_surface == xdg_surface);
+    DASSERT(!win->needAllocate);
+    DASSERT(win->buffer);
+    DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
+    DASSERT(win->sharedBufferSize);
 
     if(win->xdg_configured) {
 
@@ -349,11 +355,6 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     // configure event.
     xdg_surface_ack_configure(win->xdg_surface, serial);
 
-
-
-    DASSERT(win->buffer);
-    DASSERT(win->surface.allocation.pixels);
-    DASSERT(win->sharedBufferSize);
 
     DSPEW("Got first xdg_surface_configure event for window=%p", win);
 }

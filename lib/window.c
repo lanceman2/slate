@@ -319,8 +319,8 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
         DASSERT(win->surface.allocation.pixels);
         DASSERT(win->sharedBufferSize);
         NOTICE("Got %" PRIu32 " extra xdg_surface_configure event serial=%"
-                PRIu32 " for window=%p", serial,
-                win->xdg_configured, win);
+                PRIu32 " for window=%p",  win->xdg_configured, serial,
+                win);
 
         // TODO: I see no effect from this xdg_surface_ack_configure()
         // call.  It seems that it's the same if I call this or not.
@@ -328,6 +328,9 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
 
         // Why the fuck did we get this event?
         //
+        // Looks like mouse pointer enter can make these events, but I
+        // also get a separate pointer enter too.
+
         ++win->xdg_configured;
 
         // Check for a integer wrapping back to 0.  Not likely, but we must

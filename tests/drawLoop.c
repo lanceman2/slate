@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <string.h>
 
@@ -23,6 +24,9 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     draw_count++;
     fprintf(stderr, "               draw_count=%d    \r", draw_count);
 
+    // We change something randomly.
+    uint8_t rd = rand();
+
     // Each pixel it 4 bytes or the sizeof(uint32_t) = 4 bytes.
     uint32_t *pix = pixels;
     // linePad is the distance in pixels to the end of a x row
@@ -37,8 +41,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
             if(x > 400)
                 *pix = 0x0AFF0000;
-            else if(x > 220) 
-                *pix = 0x0A0000FF;
+            else if(x > 220)
+                *pix = 0x0A0000FF - rd;
             else
                 *pix = 0x0A00FF00;
 
@@ -67,6 +71,7 @@ int main(void) {
             600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
     if(!win) return 1; // fail
 
+    fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");
 
     while(slDisplay_dispatch(d));
 

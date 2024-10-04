@@ -318,8 +318,14 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
         DASSERT(win->buffer);
         DASSERT(win->surface.allocation.pixels);
         DASSERT(win->sharedBufferSize);
-        NOTICE("Got %" PRIu32 " extra xdg_surface_configure events for window=%p",
+        NOTICE("Got %" PRIu32 " extra xdg_surface_configure event serial=%"
+                PRIu32 " for window=%p", serial,
                 win->xdg_configured, win);
+
+        // TODO: I see no effect from this xdg_surface_ack_configure().
+        // It seems that it's the same if I call this or not.
+        xdg_surface_ack_configure(xdg_surface, serial);
+
         // Why the fuck did we get this event?
         //
         // I see no need for more xdg_surface_configure events, except if
@@ -333,10 +339,6 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
         // We already got this event for this xdg_surface (SlWindow).  We
         // are ignoring this extra one.  Looks like we do not need to
         // call xdg_surface_ack_configure() for this event.
-        //
-        // Testing shows that we get more extra xdg_surface_configure
-        // events if the are more windows, and the server gets busy.  So,
-        // that makes sense.
         //
         ++win->xdg_configured;
 
@@ -792,10 +794,10 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
         return true;
     }
 
-
     Draw(win);
 
     win->framed = false;
+
     if(!win->wl_callback) {
         // We just use one frame call
         //
@@ -804,7 +806,6 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
     }
 
     PostDrawDamage(win);
-
 
     if(!dispatch) return false;
 

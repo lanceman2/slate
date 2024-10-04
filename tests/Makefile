@@ -74,6 +74,9 @@ draw_LDFLAGS := $(SL_LIB)
 068_drawFunc_LDFLAGS := $(SL_LIB)
 
 
+drawLoop_SOURCES := drawLoop.c
+drawLoop_LDFLAGS := $(SL_LIB)
+
 
 070_popup_SOURCES := 070_popup.c
 070_popup_LDFLAGS := $(SL_LIB)

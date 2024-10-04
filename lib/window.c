@@ -322,23 +322,11 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
                 PRIu32 " for window=%p", serial,
                 win->xdg_configured, win);
 
-        // TODO: I see no effect from this xdg_surface_ack_configure().
-        // It seems that it's the same if I call this or not.
+        // TODO: I see no effect from this xdg_surface_ack_configure()
+        // call.  It seems that it's the same if I call this or not.
         xdg_surface_ack_configure(xdg_surface, serial);
 
         // Why the fuck did we get this event?
-        //
-        // I see no need for more xdg_surface_configure events, except if
-        // it's a race/delay (thingy) in the wayland protocol, without
-        // more events.  Maybe the server sends the first event very
-        // quickly and if the client does not respond quickly also, the
-        // server sends more.  There must be a timeout set somewhere.
-        //
-        // Could this be an effect from the wayland client and server
-        // running asynchronously?
-        // We already got this event for this xdg_surface (SlWindow).  We
-        // are ignoring this extra one.  Looks like we do not need to
-        // call xdg_surface_ack_configure() for this event.
         //
         ++win->xdg_configured;
 

@@ -58,7 +58,6 @@ int main(void) {
             0/* borderWidth*/,
             draw, true/*showing*/);
 
-    slWindow_compose(win);
     slWindow_show(win, true/*dispatch*/);
 
     fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");

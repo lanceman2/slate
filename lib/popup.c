@@ -119,7 +119,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         goto fail;
     }
 
-    if(showing && ConfigureSurface(win, true))
+    if(showing && ShowSurface(win, true))
         goto fail;
 
     // Success:

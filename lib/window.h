@@ -201,17 +201,26 @@ struct SlWindow {
     //
     int32_t x, y;
 
-    bool configured, open, framed;
-
-    // When the user is creating and assembling widgets into a window the width and
-    // height of widgets need to be calculated via slWindow_compose().
-    bool needAllocate;
-
-    // When the wayland pixel buffer needs recreating.  If needAllocate is
-    // true then this needs to be true too.  So we have just 3 valid
-    // states for the two flags needAllocate and needReconfigure.
+    // TODO: Too many fucking flags here:
     //
-    bool needReconfigure; // TODO: merge this with configure flag?
+    // Looks like wayland has a configure event that has no widow size
+    // when the configure callback is called.  The xdg_surface is created
+    // but it has no size.  Looks like we can get more than one of these
+    // xdg_surface_configure events for a given window.
+    //
+    uint32_t xdg_configured;
+
+    bool open, framed;
+
+    // First we allocate widget widths and heights in slWindow_compose().
+    //
+    // When the user is creating and assembling widgets into a window the
+    // width and height of widgets need to be calculated via
+    // slWindow_compose().  We do not do that calculation every time a
+    // widget is added to a window, so we need a flag so that we can
+    // wait to do that later before we draw.
+    //
+    bool needAllocate;
 };
 
 
@@ -260,10 +269,10 @@ extern void AddChild(struct SlToplevel *t, struct SlWindow *win);
 //
 extern void RemoveChild(struct SlToplevel *t, struct SlWindow *win);
 
-extern bool ConfigureSurface(struct SlWindow *win, bool dispatch);
+extern bool ShowSurface(struct SlWindow *win, bool dispatch);
 
 // TODO: Damage just a rectangular region of interest.
 extern void PushPixels(struct SlWindow *win);
 
-
+extern void FreeBuffer(struct SlWindow *win);
 

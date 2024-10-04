@@ -55,7 +55,8 @@ AddToSurfaceList(struct SlSurface *parent, struct SlSurface *widget) {
 // Remove widget from it's list which has the parent "parent".
 //
 static inline void
-RemoveFromSurfaceList(struct SlSurface *parent, struct SlSurface *widget) {
+RemoveFromSurfaceList(struct SlSurface *parent,
+        struct SlSurface *widget) {
 
     DASSERT(parent);
     DASSERT(widget);
@@ -100,7 +101,6 @@ void DestroyWidget(struct SlSurface *surface) {
     struct SlWidget *w = (void *) ((uint8_t *) surface -
             offsetof(struct SlWidget, surface));
 
-    w->window->needReconfigure = true;
     w->window->needAllocate = true;
 
     RemoveFromSurfaceList(surface->parent, surface);
@@ -154,7 +154,6 @@ struct SlWidget *slWidget_create(
 
     widget->window = win;
 
-    win->needReconfigure = true;
     win->needAllocate = true;
 
     // MORE CODE HERE ..........

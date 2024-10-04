@@ -380,21 +380,26 @@ void slWindow_compose(struct SlWindow *win) {
     if(!oldShowing)
         win->surface.showing = oldShowing;
 
+
+    win->stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
+    size_t sharedBufferSize = win->stride * win->surface.allocation.height;
+    if(win->sharedBufferSize != sharedBufferSize && win->buffer)
+        // The shared memory pixel buffer will need to be rebuilt.
+        FreeBuffer(win);
+
+    win->sharedBufferSize = sharedBufferSize;
     win->needAllocate = false;
-    win->needReconfigure = true;
 }
 
 
 void slWindow_show(struct SlWindow *win, bool dispatch) {
 
     DASSERT(win);
+    DASSERT(win->xdg_surface);
 
     win->surface.showing = true;
 
-    if(win->needAllocate)
-        slWindow_compose(win);
-
-    if(ConfigureSurface(win, dispatch)) {
-        DASSERT(0, "ConfigureSurface() failed");
+    if(ShowSurface(win, dispatch)) {
+        DASSERT(0, "ShowSurface() failed");
     }
 }

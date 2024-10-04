@@ -137,7 +137,7 @@ SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 // and heights may not be consistent with what is currently being
 // displayed.
 //
-// TODO: Remove this interface.
+// TODO: Remove this function from the user API.
 //
 SL_EXPORT
 void slWindow_compose(struct SlWindow *win);

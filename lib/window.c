@@ -138,7 +138,7 @@ static inline void Draw(struct SlWindow *win) {
 
 // This does nothing if there is no buffer stuff yet.
 //
-static inline void free_buffer(struct SlWindow *win) {
+void FreeBuffer(struct SlWindow *win) {
 
     DASSERT(win);
 
@@ -161,12 +161,37 @@ static inline void free_buffer(struct SlWindow *win) {
                     win->surface.allocation.pixels,
                     win->sharedBufferSize);
         }
-        win->sharedBufferSize = 0;
         win->surface.allocation.pixels = 0;
-
-    } else {
-        DASSERT(!win->sharedBufferSize);
     }
+}
+
+
+// Each SlWindow does this once and only once.
+//
+static inline
+bool WaitForConfigureXDGSurface(struct SlWindow *win) {
+
+    DASSERT(win);
+    DASSERT(win->wl_surface);
+    DASSERT(win->xdg_surface);
+
+    for(uint32_t loopCount = 0; !win->xdg_configured;) {
+        // We are wanting for the compositor (server) to send an event
+        // that says we have a valid xdg_surface.  No size, but just the
+        // xdg_surface.
+        //
+        // TODO: Could this get tricky if there are lots of other events
+        // that are not related to this surface/window?
+        //
+        if(wl_display_dispatch(wl_display) == -1) {
+	    ERROR("wl_display_dispatch() failed can't configure window");
+            return true;
+        }
+        // Make it robust.
+        ASSERT(++loopCount < 10000, "Failed to get xdg_surface configure event"
+                " in %" PRIu32 " loop tries", loopCount);
+    }
+    return false; // false ==> success
 }
 
 
@@ -174,24 +199,28 @@ static inline void free_buffer(struct SlWindow *win) {
 static inline bool RecreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
+    DASSERT(win->surface.allocation.width * SLATE_PIXEL_SIZE ==
+            win->stride);
+    DASSERT(win->sharedBufferSize);
 
     // Given the name Recreate we need to cleanup the old stuff.
     //
     // This does nothing if there is no buffer stuff yet.
-    free_buffer(win);
+    FreeBuffer(win);
 
-    DASSERT(!win->buffer);
+    // We will get these here:
     DASSERT(!win->surface.allocation.pixels);
+    DASSERT(!win->buffer);
+
     // TODO: What the hell are x,y, at this time?
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
 
-    DASSERT(!win->stride);
-    DASSERT(!win->sharedBufferSize);
-
-    int stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
-    // pixels shared Buffer Size in bytes
-    size_t size = stride * win->surface.allocation.height;
+    int stride = win->stride;
+    // in bytes
+    size_t size = win->sharedBufferSize;
     uint32_t *pixels;
 
     int fd = create_shm_file(size);
@@ -256,8 +285,6 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     // the allocated size, making the allocated size different from the
     // API user requested size.
     win->surface.allocation.pixels = pixels;
-    win->stride = stride;
-    win->sharedBufferSize = size;
 
     // We have what we needed.  Inter-process shared memory at process
     // virtual address win->surface.allocation.pixels.
@@ -269,12 +296,11 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
 
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
-    //
-    uint32_t *end = pixels +
-        win->surface.allocation.height * stride/SLATE_PIXEL_SIZE;
-    uint32_t bgColor = win->surface.backgroundColor;
-    while(pixels < end)
-        *(pixels++) = bgColor;
+    sl_drawFilledRectangle(pixels/*surface starting pixel*/,
+            0/*x*/, 0/*y*/,
+            win->surface.allocation.width,
+            win->surface.allocation.height, stride,
+            win->surface.backgroundColor);
 
     return false;
 }
@@ -284,29 +310,59 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
 	    struct xdg_surface *xdg_surface, uint32_t serial) {
 
     DASSERT(win);
+    DASSERT(win->xdg_surface);
+    DASSERT(win->xdg_surface == xdg_surface);
 
-    // The compositor configures our surface, acknowledge the configure
-    // event
+    if(win->xdg_configured) {
+
+        DASSERT(win->buffer);
+        DASSERT(win->surface.allocation.pixels);
+        DASSERT(win->sharedBufferSize);
+        NOTICE("Got %" PRIu32 " extra xdg_surface_configure events for window=%p",
+                win->xdg_configured, win);
+        // Why the fuck did we get this event?
+        //
+        // I see no need for more xdg_surface_configure events, except if
+        // it's a race/delay (thingy) in the wayland protocol, without
+        // more events.  Maybe the server sends the first event very
+        // quickly and if the client does not respond quickly also, the
+        // server sends more.  There must be a timeout set somewhere.
+        //
+        // Could this be an effect from the wayland client and server
+        // running asynchronously?
+        // We already got this event for this xdg_surface (SlWindow).  We
+        // are ignoring this extra one.  Looks like we do not need to
+        // call xdg_surface_ack_configure() for this event.
+        //
+        // Testing shows that we get more extra xdg_surface_configure
+        // events if the are more windows, and the server gets busy.  So,
+        // that makes sense.
+        //
+        ++win->xdg_configured;
+
+        // Check for a integer wrapping back to 0.  Not likely, but we must
+        // make this robust code.
+        ASSERT(win->xdg_configured != 0,
+                "We got to many extra xdg_surface_configure "
+                "events for window=%p", win);
+        return;
+    }
+
+    // This is the first xdg_surface_configure event for this window.
+    // I think only one needs to be acknowledged.
+    ++win->xdg_configured;
+
+    // The compositor (server) configures our xdg_surface. Acknowledge the
+    // configure event.
     xdg_surface_ack_configure(win->xdg_surface, serial);
 
-    if(!win->buffer) {
-        DASSERT(!win->buffer);
-        DASSERT(!win->surface.allocation.pixels);
-        DASSERT(!win->sharedBufferSize);
 
-        if(RecreateBuffer(win)) {
-            win->configured = false;
-            // TODO: What to do for this error case?
-            return;
-        }
-    }
 
     DASSERT(win->buffer);
     DASSERT(win->surface.allocation.pixels);
     DASSERT(win->sharedBufferSize);
 
-    if(!win->configured)
-        win->configured = true;
+    DSPEW("Got first xdg_surface_configure event for window=%p", win);
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -416,7 +472,7 @@ void _slWindow_destroy(struct SlDisplay *d,
 
 
     // Free the shared memory pixels buffer.
-    free_buffer(win);
+    FreeBuffer(win);
 
     if(win->wl_callback) {
         DASSERT(win->surface.draw);
@@ -502,10 +558,12 @@ static void frame_new(struct SlWindow *win,
     win->wl_callback = 0;
 
     if(win->surface.draw) {
+        // The API user has a draw() function.
         Draw(win);
         PostDrawDamage(win);
     }
 }
+
 
 static
 struct wl_callback_listener frame_listener = {
@@ -636,7 +694,6 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     // default window borderWidth
     win->surface.borderWidth = 4;
     win->needAllocate = true;
-    win->needReconfigure = true;
 
     win->wl_surface = wl_compositor_create_surface(compositor);
     if(!win->wl_surface) {
@@ -667,19 +724,9 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         return true;
     }
 
-    win->surface.allocation.width  = win->surface.width;
-    win->surface.allocation.height = win->surface.height;
-
-    // When this is called seems to be variable.  Try to make the window
-    // that size that the API user requested.
-    //if(RecreateBuffer(win))
-    //    return true;
-    //
-    //DASSERT(win->buffer);
-    //DASSERT(win->wl_surface);
-    //DASSERT(win->surface.allocation.pixels);
-    //DASSERT(win->sharedBufferSize);
-
+    DASSERT(!win->buffer);
+    DASSERT(win->wl_surface);
+    DASSERT(!win->surface.allocation.pixels);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -693,42 +740,60 @@ void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride)) {
     DASSERT(win);
     DASSERT(win->wl_surface);
-    DASSERT(win->configured);
+    DASSERT(win->xdg_configured);
     DASSERT(win->surface.type == SlSurfaceType_topLevel,
             "WRITE MORE CODE HERE");
 
     win->surface.draw = draw;
 
-    if(!win->wl_callback) {
+    if(!win->wl_callback && win->buffer) {
         Draw(win);
         PostDrawDamage(win);
     }
 }
 
 
-bool ConfigureSurface(struct SlWindow *win, bool dispatch) {
+bool ShowSurface(struct SlWindow *win, bool dispatch) {
+
+    DASSERT(win);
+    DASSERT(win->wl_surface);
+    DASSERT(win->xdg_surface);
+
+    if(win->needAllocate)
+        slWindow_compose(win);
+
+    if(!win->buffer) {
+        DASSERT(!win->buffer);
+        DASSERT(!win->surface.allocation.pixels);
+
+        // This is the first call to RecreateBuffer() for this
+        // xdg_surface.   RecreateBuffer() may get called again from a
+        // window resize from the desktop (mouse/pointer resize event
+        // thingy, or other desktop interaction like a menu thingy).
+        if(RecreateBuffer(win)) {
+            // TODO: What to do for this error case?
+            DASSERT(0);
+            return true;
+        }
+    }
 
     // Perform the initial commit and wait for the first configure event
     // for this surface in this slWindow.
     //
     // Removing this, wl_surface_commit(), hangs the process.  This seems
-    // to prime the pump.  I don't understand why this is called so
-    // much.
+    // to prime the pump.
     //
     wl_surface_commit(win->wl_surface);
 
-    while(!win->configured)
-        // TODO: Could this get tricky if there are lots of other events
-        // that are not related to this surface/window?
-        //
-        if(wl_display_dispatch(wl_display) == -1) {
-	    ERROR("wl_display_dispatch() failed can't configure window");
-            return true;
-        }
+    // TODO: Do we need to do this again for a window resize?
+    //
+    if(!win->xdg_configured && WaitForConfigureXDGSurface(win)) {
+        DASSERT(!win->xdg_configured);
+        return true;
+    }
 
-    if(win->surface.draw)
-        // Call callback in Draw().
-        Draw(win);
+
+    Draw(win);
 
     win->framed = false;
     if(!win->wl_callback) {
@@ -773,7 +838,6 @@ bool ConfigureSurface(struct SlWindow *win, bool dispatch) {
     return false; // success
 }
 
-
 struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
@@ -815,15 +879,9 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
-    DASSERT(win->needAllocate);
-    DASSERT(win->needReconfigure);
-    slWindow_compose(win);
-    DASSERT(!win->needAllocate);
-    DASSERT(win->needReconfigure);
-
-    // We will call ConfigureSurface() at a later time if the window is
+    // We will call ShowSurface() at a later time if the window is
     // not set as "showing" yet.
-    if(showing && ConfigureSurface(win, true))
+    if(showing && ShowSurface(win, true))
         goto fail;
 
     // Success:

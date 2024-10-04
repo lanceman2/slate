@@ -58,7 +58,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
 int main(void) {
 
-    // We need to know this does not change, so that we know how to draw.
+    // We need to know SLATE_PIXEL_SIZE does not change, so that we know
+    // how to draw.
     ASSERT(SLATE_PIXEL_SIZE == 4);
 
     ASSERT(signal(SIGSEGV, catcher) != SIG_ERR);

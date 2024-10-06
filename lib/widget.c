@@ -159,7 +159,6 @@ struct SlWidget *slWidget_create(
     // MORE CODE HERE ..........
 
 
-
     return widget;
 }
 

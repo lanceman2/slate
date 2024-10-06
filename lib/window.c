@@ -53,8 +53,6 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win);
     DASSERT(win->wl_surface);
     DASSERT(win->buffer);
-    DASSERT(win->surface.width);
-    DASSERT(win->surface.height);
     DASSERT(win->surface.allocation.pixels);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
@@ -103,14 +101,14 @@ static inline void Draw(struct SlWindow *win) {
         if(s->showing) {
             DASSERT(s->allocation.width);
             DASSERT(s->allocation.height);
-
-
-
-
+            sl_drawFilledRectangle(
+                    win->surface.allocation.pixels/*starting pixel*/,
+                    s->allocation.x, s->allocation.y,
+                    s->allocation.width, s->allocation.height,
+                    win->stride, s->backgroundColor);
         } else {
             DASSERT(!s->allocation.width);
             DASSERT(!s->allocation.height);
-
 
 
         }
@@ -181,15 +179,15 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
         // xdg_surface.
         //
         // TODO: Could this get tricky if there are lots of other events
-        // that are not related to this surface/window?
+        // that are not related to this surface/window?  Or could it...
         //
         if(wl_display_dispatch(wl_display) == -1) {
 	    ERROR("wl_display_dispatch() failed can't configure window");
             return true;
         }
         // Make it robust.
-        ASSERT(++loopCount < 10000, "Failed to get xdg_surface configure event"
-                " in %" PRIu32 " loop tries", loopCount);
+        ASSERT(++loopCount < 10000, "Failed to get xdg_surface "
+                "configure event in %" PRIu32 " loop tries", loopCount);
     }
     return false; // false ==> success
 }
@@ -199,6 +197,7 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
 static inline bool RecreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
+    DASSERT(!win->needAllocate);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
     DASSERT(win->surface.allocation.width * SLATE_PIXEL_SIZE ==
@@ -302,6 +301,9 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
             win->surface.allocation.height, stride,
             win->surface.backgroundColor);
 
+DSPEW();
+WARN();
+
     return false;
 }
 
@@ -319,40 +321,27 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     DASSERT(win->surface.allocation.height);
     DASSERT(win->sharedBufferSize);
 
-    if(win->xdg_configured) {
-
-        DASSERT(win->buffer);
-        DASSERT(win->surface.allocation.pixels);
-        DASSERT(win->sharedBufferSize);
-        NOTICE("Got %" PRIu32 " extra xdg_surface_configure event serial=%"
+    if(win->xdg_configured)
+        INFO("Got %" PRIu32 " xdg_surface_configure events serial=%"
                 PRIu32 " for window=%p",  win->xdg_configured, serial,
                 win);
 
-        // TODO: I see no effect from this xdg_surface_ack_configure()
-        // call.  It seems that it's the same if I call this or not.
-        xdg_surface_ack_configure(xdg_surface, serial);
+    // TODO: I'm not sure how to use this event.
+    //
+    // Looks like mouse pointer enter can make these events, but I also
+    // get a separate pointer enter event too.
 
-        // Why the fuck did we get this event?
-        //
-        // Looks like mouse pointer enter can make these events, but I
-        // also get a separate pointer enter too.
-
-        ++win->xdg_configured;
-
-        // Check for a integer wrapping back to 0.  Not likely, but we must
-        // make this robust code.
-        ASSERT(win->xdg_configured != 0,
-                "We got to many extra xdg_surface_configure "
-                "events for window=%p", win);
-        return;
-    }
-
-    // This is the first xdg_surface_configure event for this window.
-    // I think only one needs to be acknowledged.
+    // Count these events until we figure out what the hell they are for.
     ++win->xdg_configured;
+
+    // Note: we are not worried about this win->xdg_configured counter
+    // wrapping back to 0, we just miss one INFO() printing.
 
     // The compositor (server) configures our xdg_surface. Acknowledge the
     // configure event.
+    //
+    // I'm guessing they are for whatever we decide, but it looks like we
+    // must acknowledge the first one that this window gets.
     xdg_surface_ack_configure(win->xdg_surface, serial);
 
 
@@ -609,8 +598,8 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
             case 1:
                 // Older deprecated version (see:
                 // https://wayland-book.com/surfaces-in-depth/damaging-surfaces.html)
-                DSPEW("Using deprecated function wl_surface_damage() version=%"
-                        PRIu32, version);
+                DSPEW("Using deprecated function wl_surface_damage()"
+                        " version=%" PRIu32, version);
                 surface_damage_func = wl_surface_damage;
                 break;
 
@@ -618,14 +607,16 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
                     // wl_surface_damage_buffer()
             default:
                 // newer version:
-                DSPEW("Using newer function wl_surface_damage_buffer() version=%"
-                        PRIu32, version);
+                DSPEW("Using newer function wl_surface_damage_buffer() "
+                        "version=%" PRIu32, version);
                 surface_damage_func = wl_surface_damage_buffer;
         }
     }
 }
 
-static inline void AddToplevel(struct SlDisplay *d, struct SlToplevel *t) {
+
+static inline void AddToplevel(struct SlDisplay *d,
+        struct SlToplevel *t) {
 
     DASSERT(d);
     DASSERT(t->display = d);
@@ -678,13 +669,27 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     ASSERT(w > 0);
     ASSERT(h > 0);
 
-    win->surface.width = w;
-    win->surface.height = h;
+    // Extra width and height if win acts as a widget container.
+    // Clearly these are not set in slWindow_createToplevel() and
+    // like functions.
+    win->surface.width = 0;
+    win->surface.height = 0;
+
+    // If win has no widget children, then the window is just a API users
+    // drawing area with this width and height.
+    //
+    // If there are widget children then this width and height are a user
+    // suggested window size at the first displaying of the window.
+    win->width = w;
+    win->height = h;
+
+    // x,y are used for popup windows.
     win->x = x;
     win->y = y;
+
     win->surface.draw = draw;
     // default window background color
-    win->surface.backgroundColor = 0xA0A0FFA0;
+    win->surface.backgroundColor = 0x70FF00F0;
     // default window borderWidth
     win->surface.borderWidth = 4;
     win->needAllocate = true;
@@ -753,10 +758,12 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
     DASSERT(win->wl_surface);
     DASSERT(win->xdg_surface);
 
+    bool needAllocate = win->needAllocate;
+
     if(win->needAllocate)
         slWindow_compose(win);
 
-    if(!win->buffer) {
+    if(!win->buffer || needAllocate) {
         DASSERT(!win->buffer);
         DASSERT(!win->surface.allocation.pixels);
 
@@ -770,6 +777,10 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
             return true;
         }
     }
+
+    DASSERT(win->buffer);
+    DASSERT(win->surface.allocation.pixels);
+
 
     // Perform the initial commit and wait for the first configure event
     // for this surface in this slWindow.

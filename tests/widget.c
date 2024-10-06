@@ -13,7 +13,6 @@ void catcher(int sig) {
 }
 
 
-static
 int draw(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
@@ -28,6 +27,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     cairo_paint(cr);
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
+
+WARN();
  
     return 1; // stop calling
 
@@ -48,17 +49,16 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
+            600, 600, 100, 10, 0/*draw()*/, false/*showing*/);
     if(!win) return 1; // fail
 
     slWidget_create((void *) win, 200, 100,
             SlGravity_None/*SlGravity_None => non-container*/,
             SlGreed_None,
-            0x20F0F000/* ARGB background color*/,
+            0xB000F0F0/* ARGB background color*/,
             0/* borderWidth*/,
-            draw, true/*showing*/);
+            0/*draw()*/, true/*showing*/);
 
-    slWindow_compose(win);
     slWindow_show(win, true/*dispatch*/);
 
     fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");

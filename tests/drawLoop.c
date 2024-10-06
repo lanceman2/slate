@@ -50,7 +50,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
             else if(x > 220 && y < 500)
                 *pix = midColor;
             else
-                *pix = 0x0A00FF00;
+                *pix = 0xFF00FF00;
 
             // Go to next pixel.
             pix++;

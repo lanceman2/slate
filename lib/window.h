@@ -61,6 +61,11 @@ struct SlSurface {
 
     enum SlSurfaceType type;
 
+    // The window that owns this surface.  This is needed for widgets that
+    // are drawn on windows.  If window is 0 than this, SlSurface, is part
+    // of a SlWindow that is the window.
+    //struct SlWindow *window;
+
     // The toplevel window allocation::x,y will always be 0,0.
     //
     // Current allocation.  This can change as the surface is resized from
@@ -156,17 +161,29 @@ struct SlWindow {
     // a row.
     //
     // "stride" is 4*width for a window because each pixel is 4 bytes in
-    // size and there is no memory padding at end of a row.  It just works
-    // out that way.  For a widget that is not as wide as the window that
-    // contains it the stride is larger than 4*width where width is the
-    // width of the widget.
+    // size and there is no memory padding at the end of a row.  It just
+    // works out that way.  For a widget that is not as wide as the window
+    // that contains it, the stride is larger than 4*width where width is
+    // the width of the widget.
     //
-    // what-does-stride-mean: How long with this URL last?:
+    // what-does-stride-mean: How long will this page (URL) last?:
     // https://medium.com/@oleg.shipitko/what-does-stride-mean-in-image-processing-bba158a72bcd
     //
     // The child widgets have this same stride.
     //
     uint32_t stride;
+
+    // If this is a widget container all 6 of the next parameters are
+    // used: the window itself has extra space from width, height (for
+    // itself) and the children are in a rectangle given by wX, wY,
+    // wWidth, wHeight.
+
+    // Preferred total width, height by the API user.
+    uint32_t width, height;
+
+    // The child widgets (w) [if any] preferred position and size.
+    uint32_t wX, wY, wWidth, wHeight;
+
 
     // Size in bytes of the current mmap() shared memory used with the
     // wayland compositor and this wayland client.  This is a function of
@@ -275,4 +292,10 @@ extern bool ShowSurface(struct SlWindow *win, bool dispatch);
 extern void PushPixels(struct SlWindow *win);
 
 extern void FreeBuffer(struct SlWindow *win);
+
+// Calculate all the widget (and window) geometries, positions (x,y)
+// widths and heights; and that's all.  Just after calling this the widths
+// and heights may not be consistent with what is currently being
+// displayed.
+void slWindow_compose(struct SlWindow *win);
 

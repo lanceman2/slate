@@ -91,6 +91,9 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
     if(CreateWindow(d, win, w, h, x, y, draw))
         goto fail;
 
+    DASSERT(win->width == w);
+    DASSERT(win->height == h);
+
     // Add stuff specific to the popup surface/window thingy.
     p->xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
     if(!p->xdg_positioner) {
@@ -98,13 +101,10 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         goto fail;
     }
 
-    DASSERT(win->surface.width > 0);
-    DASSERT(win->surface.height > 0);
-
     xdg_positioner_set_size(p->xdg_positioner,
-            win->surface.width, win->surface.height);
+            win->width, win->height);
     xdg_positioner_set_anchor_rect(p->xdg_positioner,
-            win->x, win->y, win->surface.width, win->surface.height);
+            win->x, win->y, win->width, win->height);
 
     p->xdg_popup = xdg_surface_get_popup(win->xdg_surface,
             parent->xdg_surface, p->xdg_positioner);

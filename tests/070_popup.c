@@ -17,6 +17,5 @@ int main(void) {
             w, 100, 200, 10, 10, 0, true/*showing*/);
     if(!p) return 1; // fail
 
-
     return 0;
 }

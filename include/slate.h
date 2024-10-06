@@ -32,7 +32,7 @@ as we define it from the \c SLATE_MAJOR, \c SLATE_MINOR, and \c SLATE_EDIT.
         SLATE_STR(SLATE_MINOR) "." SLATE_STR(SLATE_EDIT))
 
 // This file may get installed in the "system" (or where ever installer
-// decides) so we do not polute the CPP (C pre-processor) namespace by
+// decides) so we do not pollute the CPP (C pre-processor) namespace by
 // defining EXPORT, instead we define SL_EXPORT
 #ifndef SL_EXPORT
 #  define SL_EXPORT extern
@@ -132,15 +132,6 @@ SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
             uint32_t w, uint32_t h, uint32_t stride));
 SL_EXPORT void slWindow_destroy(struct SlWindow *w);
 
-// Calculate all the widget (and window) geometries, positions (x,y)
-// widths and heights; and that's all.  Just after calling this the widths
-// and heights may not be consistent with what is currently being
-// displayed.
-//
-// TODO: Remove this function from the user API.
-//
-SL_EXPORT
-void slWindow_compose(struct SlWindow *win);
 
 // Also compose if needed.  Note, the changes may not be visible on the
 // computer monitor after this function call if it has dispatch==false.

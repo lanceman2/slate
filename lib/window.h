@@ -93,8 +93,8 @@ struct SlSurface {
     // children.  This is ignored if there are no children.
     uint32_t borderWidth;
 
-    // We keep a queue of frame draw surfaces with
-    // SlWindow::SlSurface *drawFrameLast, *drawFrameFirst
+    // We keep a queue as a linked list of frame draw surfaces with
+    // SlWindow::DrawQueue dq1,dq2
     struct SlSurface *next;
 
     int (*draw)(struct SlSurface *surface, uint32_t *pixels,
@@ -154,6 +154,8 @@ struct SlSurface {
 };
 
 
+// A queue is a linked list of surfaces.
+//
 struct DrawQueue {
     struct SlSurface *last, *first;
 };

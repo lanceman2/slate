@@ -5,7 +5,8 @@
 //
 // TODO: Does libpixman.so do this kind of thing better?  ...automatically
 // using the hardware specific array operations (like SIMD).  The nice
-// thing about this code is that it is easy to follow (at least for me).
+// thing about this code is that it is short and easy to follow (at least
+// for me).
 //
 static inline
 void sl_drawFilledRectangle(uint32_t *pix/*surface starting pixel*/,
@@ -21,7 +22,6 @@ void sl_drawFilledRectangle(uint32_t *pix/*surface starting pixel*/,
     DASSERT(width <= stride/SLATE_PIXEL_SIZE);
     DASSERT(stride % SLATE_PIXEL_SIZE == 0);
 #endif
-
 
     // Note: we did not want to add many new variables, so we recycled the
     // function parameter variables.

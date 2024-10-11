@@ -30,9 +30,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
 WARN();
  
-    return 1; // stop calling
-
-    //return 0; //continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_configure; // stop calling unless window
+                                   // reconfigure
 }
 
 
@@ -49,7 +48,8 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, 0/*draw()*/, false/*showing*/);
+            600, 600, 100, 10, 0/*draw()*/, 0,
+            false/*showing*/);
     if(!win) return 1; // fail
 
     slWidget_create((void *) win, 200, 100,
@@ -57,7 +57,7 @@ int main(void) {
             SlGreed_None,
             0xB000F0F0/* ARGB background color*/,
             0/* borderWidth*/,
-            0/*draw()*/, true/*showing*/);
+            0/*draw()*/, 0, true/*showing*/);
 
     slWindow_show(win, true/*dispatch*/);
 

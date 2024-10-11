@@ -315,63 +315,78 @@ GrowAllocatedHeight(struct SlSurface *s, uint32_t min) {
 
 
 static
-void GetWidgetPosition(struct SlSurface *s, struct SlSurface *parent) {
+void GetChildrenWidgetPositions(struct SlSurface *s) {
 
     DASSERT(s);
-    DASSERT(parent);
-    DASSERT(s->parent == parent);
-
-    switch(parent->gravity) {
-
-                case SlGravity_TB:// top to bottom
-
-                    break;
-                case SlGravity_BT:// bottom to top
-                    break;
-                case SlGravity_LR:// left to right
-                    break;
-                case SlGravity_RL:// right to left
-                    break;
-                case SlGravity_One:
-                    ASSERT(s->firstChild == s->lastChild);
-                    break;
-                case SlGravity_None:
-                    DASSERT(0, "A surface with SlGravity_None has children");
-                    break;
-                default:
-                    ASSERT(0, "Write more code here");
-            }
-
-
-}
-
-
-static inline
-void GetWidgetPositions(struct SlSurface *s) {
-
     DASSERT(s->showing);
-
-    // We have the width and height of all the widgets from
-    // which we can get the positions of all widgets.
-
-    if(s->parent)
-        GetWidgetPosition(s, s->parent);
-
-
-    if(!s->showingChildren) return;
-    if(!s->firstChild) {
-        DASSERT(!s->lastChild);
-        return;
-    }
-
-    DASSERT(s->showing);
+    DASSERT(s->showingChildren);
     DASSERT(s->firstChild);
     DASSERT(s->lastChild);
 
-    for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling) {
-        if(sf->showing && !s->showingChildren) {
-        }
+    // Start at parent x,y plus a borderWidth.
+    uint32_t borderWidth = s->borderWidth;
+    uint32_t x = s->allocation.x + borderWidth;
+    uint32_t y = s->allocation.y + borderWidth;
+
+    switch(s->gravity) {
+ 
+        case SlGravity_TB:// top to bottom
+            // Vertically stack children in order.
+           for(struct SlSurface *sf = s->firstChild; sf;
+                    sf = sf->nextSibling) {
+                sf->allocation.x = x;
+                sf->allocation.y = y;
+                y += sf->allocation.height + borderWidth;
+                if(sf->showingChildren)
+                    GetChildrenWidgetPositions(sf);
+            }
+            break;
+        case SlGravity_BT:// bottom to top
+            // Vertically stack children in reverse order.
+            for(struct SlSurface *sf = s->lastChild; sf;
+                    sf = sf->prevSibling) {
+                sf->allocation.x = x;
+                sf->allocation.y = y;
+                y += sf->allocation.height + borderWidth;
+                if(sf->showingChildren)
+                    GetChildrenWidgetPositions(sf);
+            }
+            break;
+        case SlGravity_LR:// left to right
+            // Lineup children in order.
+            for(struct SlSurface *sf = s->firstChild; sf;
+                    sf = sf->nextSibling) {
+                sf->allocation.x = x;
+                sf->allocation.y = y;
+                x += sf->allocation.width + borderWidth;
+                if(sf->showingChildren)
+                    GetChildrenWidgetPositions(sf);
+            }
+            break;
+        case SlGravity_RL:// right to left
+            // Lineup children in reverse order.
+            for(struct SlSurface *sf = s->lastChild; sf;
+                    sf = sf->prevSibling) {
+                sf->allocation.x = x;
+                sf->allocation.y = y;
+                x += sf->allocation.width + borderWidth;
+                if(sf->showingChildren)
+                    GetChildrenWidgetPositions(sf);
+            }
+            break;
+        case SlGravity_One:
+            ASSERT(s->firstChild == s->lastChild);
+            struct SlSurface *sf = s->lastChild;
+            sf->allocation.x = x;
+            sf->allocation.y = y;
+            break;
+        case SlGravity_None:
+            DASSERT(0, "A surface with SlGravity_None has children");
+            break;
+        default:
+            ASSERT(0, "Write more code here");
     }
+
 
 }
 
@@ -389,10 +404,6 @@ void GetStrideAndStuff(struct SlWindow *win) {
 }
 
 
-// TODO: We need to have a user API/mechanism to hold the window from
-// drawing (or doing like things) until "all" widgets (users choose what
-// all is) are added to the windows' tree of widgets.   ....
-//
 void slWindow_compose(struct SlWindow *win) {
 
     DASSERT(win);
@@ -465,23 +476,13 @@ void slWindow_compose(struct SlWindow *win) {
     else if(win->surface.allocation.height < win->surface.height)
         GrowAllocatedHeight(&win->surface, win->surface.height);
 
-    // Save the position of the window.
-    uint32_t x = win->surface.allocation.x;
-    uint32_t y = win->surface.allocation.y;
-    // Zero the position of the window, so that the
-    // children positions are calculated from 0,0.
-    win->surface.allocation.x = 0;
-    win->surface.allocation.y = 0;
+    // We define this for the top parent window:
+    DASSERT(!win->surface.allocation.x);
+    DASSERT(!win->surface.allocation.y);
 
-    GetWidgetPositions(&win->surface);
-
-    // Restore the window position
-    win->surface.allocation.x = x;
-    win->surface.allocation.y = y;
-
-    //TODO: remove the borders from the allocation.
-
-    //TODO: calculate the start pixel address.
+    // Get the child widgets x and y positions.
+    if(win->surface.showingChildren)
+        GetChildrenWidgetPositions(&win->surface);
 
     // We know what we want for the width and height of the window and its
     // widgets.   We need to put back the showing state of the window if

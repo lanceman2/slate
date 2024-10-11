@@ -25,9 +25,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
     color++;
 
-    //return 1; // stop calling
-
-    return 0; //continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_frame; //continue to calling at every frame, like at 60 Hz.
 }
 
 int main(void) {
@@ -40,7 +38,7 @@ int main(void) {
     struct SlDisplay *d = slDisplay_create();
     if(!d) return 1; // fail
 
-    if(!slWindow_createToplevel(d, 100, 100, 100, 10, draw, true))
+    if(!slWindow_createToplevel(d, 100, 100, 100, 10, draw, 0, true))
         return 1; // fail
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");

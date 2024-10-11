@@ -14,7 +14,7 @@ void catcher(int sig) {
 
 
 static
-int draw(struct SlWindow *win, uint32_t *pixels,
+int draw(struct SlWidget *widget, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride) {
 
     cairo_surface_t *surface = cairo_image_surface_create_for_data(
@@ -28,10 +28,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     cairo_paint(cr);
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
- 
-    return 1; // stop calling
 
-    //return 0; //continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_configure;
 }
 
 
@@ -48,7 +46,8 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, false/*showing*/);
+            600, 600, 100, 10, 0, 0,
+            false/*showing*/);
     if(!win) return 1; // fail
 
     slWidget_create((void *) win, 200, 100,
@@ -56,7 +55,7 @@ int main(void) {
             SlGreed_None,
             0x20F0F000/* ARGB background color*/,
             0/* borderWidth*/,
-            draw, true/*showing*/);
+            draw, 0, true/*showing*/);
 
     slWindow_show(win, true/*dispatch*/);
 

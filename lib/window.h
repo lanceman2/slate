@@ -36,22 +36,18 @@ struct SlAllocation {
     // GTK uses the word for, except we use positions relative to the
     // toplevel window.  We can get the relative X position from:
     //
-    //   x_rel = widget->allocation.x - widget->parent->allocation.x
-    //   y_rel = widget->allocation.y - widget->parent->allocation.y
+    //   x_rel = surface->allocation.x - surface->parent->allocation.x
+    //   y_rel = surface->allocation.y - surface->parent->allocation.y
+    //
+    //
+    // Calculating positions relative to the toplevel window.  We'll see
+    // if this works out...
     //
     // Note it's not like GTK: GTK allocation uses positions x,y relative
     // to the parent, not relative to the GDK window position.
-    //
-    // Calculating positions relative to the toplevel window, for relative
-    // positions, is a pain-in-the-ass in GTK.  We'll see if this works
-    // out...
+
     //
     uint32_t x, y, width, height;
-
-    // "pixels" points to where the inter-process shared memory pixels
-    // start for the case of a window, and "pixels" points to the top left
-    // corner of the rectangle for a widget that is inside of a window.
-    uint32_t *pixels;
 };
 
 
@@ -75,8 +71,8 @@ struct SlSurface {
 
     // We keep a linked list (tree like) graph of surfaces starting at a
     // window with parent == 0.  The top level parent windows are owned by
-    // a display.  Displays are owned by a static global list of displays
-    // in display.c.
+    // a SlDisplay (display).  Displays are owned by a static global list
+    // of displays in display.c.
     //
     struct SlSurface *parent;
     struct SlSurface *firstChild, *lastChild;
@@ -92,18 +88,27 @@ struct SlSurface {
     // slWindow_create() or slWidget_create().
     uint32_t width, height; // in pixels
 
-
     uint32_t backgroundColor;
     // This surface will add this width of border between all its
     // children.  This is ignored if there are no children.
     uint32_t borderWidth;
 
-    int (*draw)(struct SlWindow *win, uint32_t *pixels,
+    // We keep a queue of frame draw surfaces with
+    // SlWindow::SlSurface *drawFrameLast, *drawFrameFirst
+    struct SlSurface *next;
+
+    int (*draw)(struct SlSurface *surface, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride);
 
-    // State saved after the first tree traversal so we have it for the
-    // next traversal, in slWindow_compose() function which computes
-    // widget width and height allocations.
+    void (*getChildrenPosition)(struct SlSurface *surface,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY);
+
+    // State saved after the first tree traversal of the many needed for
+    // getting the surface allocations so we have it for the next
+    // traversal, in slWindow_compose() function which computes widget
+    // width and height (and x, y) allocations.
     //
     // The SlSurface::showing flag is set and kept based on the API user
     // calls, but "showingChildren" is set based on looking at the widget
@@ -144,6 +149,13 @@ struct SlSurface {
     // more like GTK's "visible".
     //
     bool showing; // showing == true --> make space for it
+
+    bool queued; // Is this surface queued in the drawFrame?
+};
+
+
+struct DrawQueue {
+    struct SlSurface *last, *first;
 };
 
 
@@ -152,6 +164,11 @@ struct SlWindow {
     // inherit slate surface.  We keep this first in the structure so
     // that we may call slWidget_create((void *) window, ...)
     struct SlSurface surface;
+
+    // We needed two queues because one is emptied while the other is
+    // being loaded; and we switch between them before reading and
+    // emptying a queue.
+    struct DrawQueue dq1, dq2, *writingDQ, *readingDQ;
 
     // "stride" is the distance in bytes from positions X,Y to get to the
     // next (X, Y+1) position at a same X value.  It's used to loop back
@@ -172,6 +189,11 @@ struct SlWindow {
     // The child widgets have this same stride.
     //
     uint32_t stride;
+
+    // "pixels" is a pointer to the start of the mmap(2) shared memory
+    // that is shared between this libwayland-client.so process and the
+    // compositor (server).
+    uint32_t *pixels;
 
     // If this is a widget container all 6 of the next parameters are
     // used: the window itself has extra space from width, height (for
@@ -238,6 +260,9 @@ struct SlWindow {
     // wait to do that later before we draw.
     //
     bool needAllocate;
+
+    bool needRedraw; // Draw of all widgets is needed due to
+                     // window resize or configure.
 };
 
 
@@ -278,7 +303,12 @@ extern void _slWindow_destroy(struct SlDisplay *d, struct SlWindow *w);
 extern bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride));
+            uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY)
+        );
 
 // Toplevel windows can have children.  These Add and Remove from the
 // toplevel's list of child windows.

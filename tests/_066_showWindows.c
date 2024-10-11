@@ -13,7 +13,7 @@ int main(void) {
     struct SlWindow *w[NUM_WINS];
 
     for(int i=0; i<NUM_WINS; ++i) {
-        w[i] = slWindow_createToplevel(d, 100, 100, i*100, 10, 0, true);
+        w[i] = slWindow_createToplevel(d, 100, 100, i*100, 10, 0, 0, true);
         if(!w[i]) return 1; // error fail
     }
 

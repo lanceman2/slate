@@ -121,8 +121,12 @@ struct SlWidget *slWidget_create(
         uint32_t backgroundColor, // A R G B with one byte for each one.
         uint32_t borderWidth, // part of the container surface between
                               // children
-        int (*draw)(struct SlWindow *win, uint32_t *pixels,
+        int (*draw)(struct SlWidget *widget, uint32_t *pixels,
                 uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWidget *widget,
+                uint32_t width, uint32_t height,
+                uint32_t childrenWidth, uint32_t childrenHeight,
+                uint32_t *childrenX, uint32_t *childrenY),
         bool showing) {
 
     ASSERT(parent, "slWidget_create() with no parent");
@@ -132,12 +136,12 @@ struct SlWidget *slWidget_create(
 
     widget->surface.type = SlSurfaceType_widget;
     widget->surface.gravity = gravity;
-    widget->surface.draw = draw;
     widget->surface.width = width;
     widget->surface.height = height;
     widget->surface.backgroundColor = backgroundColor;
     widget->surface.borderWidth = borderWidth;
-    widget->surface.draw = draw;
+    widget->surface.draw = (void *) draw;
+    widget->surface.getChildrenPosition = (void *) *getChildrenPosition;
     widget->surface.showing = showing;
     widget->greed = greed;
 

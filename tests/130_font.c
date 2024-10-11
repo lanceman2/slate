@@ -45,7 +45,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
 
     DSPEW("Finished drawing");
 
-    return 1; // stop calling
+    return SlDrawReturn_configure;
 }
 
 int main(void) {
@@ -60,7 +60,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
+            600, 600, 100, 10, draw/*draw()*/, 0, true/*showing*/);
     if(!win) return 1; // fail
 
     if(slWindow_DrawText(win,

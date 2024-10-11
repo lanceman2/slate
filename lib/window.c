@@ -48,17 +48,219 @@ void PushPixels(struct SlWindow *win) {
     PostDrawDamage(win);
 }
 
-static inline void Draw(struct SlWindow *win) {
+
+// The default used when the callback is not set by the API user.
+static
+void GetChildrenPosition(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY) {
+
+    *childrenX = 0;
+    *childrenY = 0;
+}
+
+
+// In case we need to cleanup this Frame DrawQueue thing before it gets
+// used.
+//
+// This is a case of editing this queue list that only happens when a
+// widget (or window) is destroyed.
+//
+static inline
+void RemoveDrawFrameQueue(struct DrawQueue *dq, struct SlSurface *s) {
+
+    DASSERT(dq);
+    DASSERT(s);
+
+    if(!s->queued) return;
+ 
+    struct SlSurface *prev = 0;
+    for(struct SlSurface *sf = dq->first; sf; sf = sf->next) {
+
+        if(sf == s) {
+            if(prev) {
+                DASSERT(sf != dq->first);
+                prev->next = sf->next;
+            } else {
+                DASSERT(sf == dq->first);
+                dq->first = s->next;
+            }
+
+            if(s->next) {
+                DASSERT(sf != dq->last);
+                s->next = 0;
+            } else {
+                DASSERT(sf == dq->last);
+                dq->last = prev;
+            }
+            break;
+        }
+
+        prev = sf;
+    }
+}
+
+
+void RemoveDrawFrameQueues(struct SlWindow *win, struct SlSurface *s) {
+
+    DASSERT(win);
+    DASSERT(s);
+    
+    if(!s->queued) return;
+
+    RemoveDrawFrameQueue(&win->dq1, s);
+    RemoveDrawFrameQueue(&win->dq2, s);
+
+    if(!win->dq1.first && !win->dq2.first) {
+        if(win->wl_callback) {
+            wl_callback_destroy(win->wl_callback);
+            win->wl_callback = 0;
+        }
+    }
+}
+
+
+static inline
+void AddDrawFrameQueue(struct SlWindow *win, struct SlSurface *s) {
+
+    DASSERT(win);
+    DASSERT(s);
+    DASSERT(!s->next);
+    DASSERT(s->draw);
+
+    struct DrawQueue *dq = win->writingDQ;
+    DASSERT(dq);
+    DASSERT(win->readingDQ);
+    DASSERT(dq != win->readingDQ);
+
+    // TODO: Is it possible that it is in the queue already?
+    if(s->queued) {
+        DASSERT(0, "this happened");
+        return;
+    }
+
+    DASSERT(!s->next);
+    // Add this, s, to the last in the queue, win->drawFrameLast.
+    //
+    if(dq->last) {
+        DASSERT(dq->first);
+        DASSERT(!dq->last->next);
+        dq->last->next = s;
+    } else {
+        DASSERT(!dq->first);
+        dq->first = s;
+    }
+    dq->last = s;
+
+    s->queued = true;
+}
+
+
+static inline
+struct SlSurface *PopDrawFrameQueue(struct SlWindow *win) {
+
+    DASSERT(win);
+    struct DrawQueue *dq = win->readingDQ;
+    DASSERT(dq);
+    DASSERT(win->writingDQ);
+    DASSERT(dq != win->writingDQ);
+
+    struct SlSurface *s = dq->first;
+
+    if(s) {
+        DASSERT(dq->last);
+        dq->first = s->next;
+        if(s == dq->last) {
+            DASSERT(!s->next);
+            dq->last = 0;
+        } else {
+            DASSERT(s->next);
+            s->next = 0;
+        }
+        DASSERT(s->queued);
+        s->queued = false;
+    } else {
+        DASSERT(!dq->last);
+    }
+
+    return s;
+}
+
+
+static inline void DrawSurface(struct SlWindow *win,
+        struct SlSurface *s, uint32_t *pixels, uint32_t stride) {
+
+    DASSERT(s);
+    DASSERT(pixels);
+
+    // The starting pixel for this widget (or window) surface:
+    pixels += s->allocation.x + s->allocation.y * stride / 4;
+
+    sl_drawFilledRectangle(pixels/*starting pixel*/,
+            0/*x*/, 0/*y*/,
+            s->allocation.width,
+            s->allocation.height,
+            stride, s->backgroundColor);
+
+    if(s->draw) {
+        // Call the libslate.so API users draw() callback
+
+        int drawReturn = s->draw(s,
+                pixels,
+                s->allocation.width,
+                s->allocation.height,
+                stride/*stride in bytes*/);
+
+        switch(drawReturn) {
+
+            case SlDrawReturn_frame:
+                // We will continue to call this draw in this frame thingy
+                // when the time for the next frame happens.
+                //
+                if(!win->wl_callback)
+                    // TODO: This can fail, so ...
+                    AddFrameListener(win);
+                AddDrawFrameQueue(win, s);
+                break;
+
+            case SlDrawReturn_configure:
+        }
+    }
+}
+
+
+// This function calls itself.
+//
+static void DrawSurfaceRecursive(struct SlWindow *win,
+        struct SlSurface *s, uint32_t *pixels, uint32_t stride) {
+
+    DrawSurface(win, s, pixels, stride);
+
+    if(s->showingChildren) {
+        DASSERT(s->firstChild);
+        DASSERT(s->lastChild);
+        for(struct SlSurface *sf = s->firstChild; sf; sf = sf->nextSibling)
+            if(sf->showing)
+                DrawSurfaceRecursive(win, sf, pixels, stride);
+    }
+}
+
+
+// Draw all the window's widgets.
+//
+static inline void DrawAll(struct SlWindow *win) {
 
     DASSERT(win);
     DASSERT(win->wl_surface);
     DASSERT(win->buffer);
-    DASSERT(win->surface.allocation.pixels);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
+    DASSERT(win->pixels);
     DASSERT(win->stride);
     DASSERT(win->sharedBufferSize);
     DASSERT(win->wl_callback == 0);
+    DASSERT(win->surface.showing);
 
     // We better not draw if we are in the middle of setting up the shared
     // memory; and yes we do setup surface.allocation.width,height some
@@ -66,71 +268,9 @@ static inline void Draw(struct SlWindow *win) {
     DASSERT(win->surface.allocation.height *
             win->stride == win->sharedBufferSize);
 
-    // Call the libslate.so users draw callback.  This draw() function
-    // can set the win->surface.pixels pixel value to what ever it wants to.
-    // These values will not be seen until the compositor process
-    // decides to read these pixels from the shared memory.  In this
-    // process the shared memory is at virtual address win->surface.pixels.
+    // Draw all children widgets too.
     //
-    sl_drawFilledRectangle(win->surface.allocation.pixels/*starting pixel*/,
-            0/*x*/, 0/*y*/,
-            win->surface.allocation.width,
-            win->surface.allocation.height,
-            win->stride, win->surface.backgroundColor);
-
-    int drawRet;
-
-    if(win->surface.draw) {
-
-        // Draw the window first.
-        drawRet = win->surface.draw(win, win->surface.allocation.pixels,
-                win->surface.allocation.width,
-                win->surface.allocation.height,
-                win->stride/*stride in bytes*/);
-    }
-
-    // Draw children widgets:
-    //
-    // Now draw the widgets on top of what's there, if there are any
-    // widgets.
-    //
-    // TODO: Draw just the regions that we need to, without overdrawing???
-    //
-    for(struct SlSurface *s = win->surface.firstChild; s;
-            s = s->nextSibling) {
-        if(s->showing) {
-            DASSERT(s->allocation.width);
-            DASSERT(s->allocation.height);
-            sl_drawFilledRectangle(
-                    win->surface.allocation.pixels/*starting pixel*/,
-                    s->allocation.x, s->allocation.y,
-                    s->allocation.width, s->allocation.height,
-                    win->stride, s->backgroundColor);
-        } else {
-            DASSERT(!s->allocation.width);
-            DASSERT(!s->allocation.height);
-
-
-        }
-    }
-
-
-    if(win->surface.draw) {
-
-        switch(drawRet) {
-            case 0:
-                // We will continue to call this draw in this frame thingy
-                // when the time for the next frame happens.
-                //
-                // TODO: This can fail, so ...
-                AddFrameListener(win);
-                break;
-            case 1:
-                // stop calling this draw function and remove the draw
-                // function.
-                win->surface.draw = 0;
-        }
-    }
+    DrawSurfaceRecursive(win, &win->surface, win->pixels, win->stride);
 }
 
 
@@ -145,21 +285,21 @@ void FreeBuffer(struct SlWindow *win) {
         win->buffer = 0;
     }
 
-    if(win->surface.allocation.pixels) {
+    if(win->pixels) {
 
         DASSERT(win->sharedBufferSize);
 
-        if(munmap(win->surface.allocation.pixels,
+        if(munmap(win->pixels,
                     win->sharedBufferSize)) {
             ERROR("munmap(%p,%zu) failed",
-                    win->surface.allocation.pixels,
+                    win->pixels,
                     win->sharedBufferSize);
             // TODO: What can we do about this failure???
             DASSERT(0, "munmap(%p,%zu) failed",
-                    win->surface.allocation.pixels,
+                    win->pixels,
                     win->sharedBufferSize);
         }
-        win->surface.allocation.pixels = 0;
+        win->pixels = 0;
     }
 }
 
@@ -210,10 +350,8 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     FreeBuffer(win);
 
     // We will get these here:
-    DASSERT(!win->surface.allocation.pixels);
+    DASSERT(!win->pixels);
     DASSERT(!win->buffer);
-
-    // TODO: What the hell are x,y, at this time?
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
 
@@ -283,7 +421,7 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     // size, in case a resize event comes from the compositor to change
     // the allocated size, making the allocated size different from the
     // API user requested size.
-    win->surface.allocation.pixels = pixels;
+    win->pixels = pixels;
 
     // We have what we needed.  Inter-process shared memory at process
     // virtual address win->surface.allocation.pixels.
@@ -301,9 +439,6 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
             win->surface.allocation.height, stride,
             win->surface.backgroundColor);
 
-DSPEW();
-WARN();
-
     return false;
 }
 
@@ -316,7 +451,7 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     DASSERT(win->xdg_surface == xdg_surface);
     DASSERT(!win->needAllocate);
     DASSERT(win->buffer);
-    DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->pixels);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
     DASSERT(win->sharedBufferSize);
@@ -373,8 +508,7 @@ static void xdg_toplevel_handle_close(struct SlToplevel *t,
     // Alt-<F4> event.  I note the if I do not destroy the display in time
     // (fast enough) the process is terminated.  It may be kwin server
     // signaling my program (TODO: I need to check that).  Seems like a
-    // race condition in the kwin server/client interaction/protocol.  Not
-    // what I call a good design.
+    // race condition in the kwin server/client interaction/protocol.
     //
     t->display->done = true;
 }
@@ -428,6 +562,8 @@ void _slWindow_destroy(struct SlDisplay *d,
     while(win->surface.lastChild)
         DestroyWidget(win->surface.lastChild);
 
+    RemoveDrawFrameQueues(win, &win->surface);
+
     // Cleanup wayland stuff for this window in reverse order of
     // construction.  (So I think...)
 
@@ -457,10 +593,8 @@ void _slWindow_destroy(struct SlDisplay *d,
     // Free the shared memory pixels buffer.
     FreeBuffer(win);
 
-    if(win->wl_callback) {
-        DASSERT(win->surface.draw);
+    if(win->wl_callback)
         wl_callback_destroy(win->wl_callback);
-    }
 
     if(win->xdg_surface)
         xdg_surface_destroy(win->xdg_surface);
@@ -522,7 +656,6 @@ static void frame_new(struct SlWindow *win,
         struct wl_callback* cb, uint32_t a) {\
 
     DASSERT(win);
-    //DASSERT(win->surface.draw);
     DASSERT(win->wl_surface);
     DASSERT(cb);
     DASSERT(cb == win->wl_callback);
@@ -533,6 +666,19 @@ static void frame_new(struct SlWindow *win,
     // call.
     if(!win->framed) win->framed = true;
 
+
+    // Switch the draw queues, the one we read and the one we write.
+    if(win->writingDQ == &win->dq1) {
+        DASSERT(win->readingDQ == &win->dq2);
+        win->writingDQ = &win->dq2;
+        win->readingDQ = &win->dq1;
+    } else {
+        DASSERT(win->readingDQ == &win->dq1);
+        DASSERT(win->writingDQ == &win->dq2);
+        win->writingDQ = &win->dq1;
+        win->readingDQ = &win->dq2;
+    }
+
     // Why is this not automatic?  It seems this must be done every call
     // to the wl_callback (this function); so why is this not automatic?
     wl_callback_destroy(cb);
@@ -540,11 +686,26 @@ static void frame_new(struct SlWindow *win,
     // and so it's done for this for this time.
     win->wl_callback = 0;
 
-    if(win->surface.draw) {
-        // The API user has a draw() function.
-        Draw(win);
-        PostDrawDamage(win);
+    // It could happen that a widget and its surface is destroyed along
+    // with the frame request, before this call.
+    bool gotOne = false;
+
+    for(struct SlSurface *s = PopDrawFrameQueue(win); s;
+            s = PopDrawFrameQueue(win)) {
+        // We are assuming that the order of the surface draws will be
+        // such that parents do not draw over their children.
+        // This should be so given that these frame draw requests come
+        // in the order of the sequence of draw callbacks.
+        DrawSurface(win, s, win->pixels, win->stride);
+        if(!gotOne)
+            gotOne = true;
     }
+
+    // The reading draw queue should be empty.
+    DASSERT(!win->readingDQ->first);
+
+    if(gotOne)
+        PostDrawDamage(win);
 }
 
 
@@ -585,12 +746,13 @@ static inline void GetSurfaceDamageFunction(struct SlWindow *win) {
         //
         // This one may be correct. We would have hoped that
         // wl_proxy_get_version() would have used argument prototype const
-        // struct wl_proxy * so we do not corrupt memory at
+        // struct wl_proxy * so we do not change memory at/in
         // win->wl_surface, but alas they do not:
         uint32_t version = wl_proxy_get_version(
                 (struct wl_proxy *) win->wl_surface);
         //
-        // These two may be wrong (I leave here for the record):
+        // These two may be the wrong function to use (I leave here for
+        // the record):
         //uint32_t version = xdg_toplevel_get_version(win->xdg_toplevel);
         //uint32_t version = xdg_surface_get_version(win->xdg_surface);
 
@@ -645,7 +807,12 @@ static inline void AddToplevel(struct SlDisplay *d,
 bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
-            uint32_t w, uint32_t h, uint32_t stride)) {
+            uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY)
+        ) {
 
     ASSERT(d);
     DASSERT(win);
@@ -669,11 +836,19 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     ASSERT(w > 0);
     ASSERT(h > 0);
 
+    win->writingDQ = &win->dq1;
+    win->readingDQ = &win->dq2;
+
     // Extra width and height if win acts as a widget container.
     // Clearly these are not set in slWindow_createToplevel() and
     // like functions.
     win->surface.width = 0;
     win->surface.height = 0;
+
+    if(!getChildrenPosition)
+        win->surface.getChildrenPosition = (void *) GetChildrenPosition;
+    else
+        win->surface.getChildrenPosition = (void *) getChildrenPosition;
 
     // If win has no widget children, then the window is just a API users
     // drawing area with this width and height.
@@ -687,7 +862,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     win->x = x;
     win->y = y;
 
-    win->surface.draw = draw;
+    win->surface.draw = (void *) draw;
     // default window background color
     win->surface.backgroundColor = 0x70FF00F0;
     // default window borderWidth
@@ -725,7 +900,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
 
     DASSERT(!win->buffer);
     DASSERT(win->wl_surface);
-    DASSERT(!win->surface.allocation.pixels);
+    DASSERT(!win->pixels);
     DASSERT(!win->wl_callback);
 
     return false; // false ==success
@@ -743,10 +918,10 @@ void slWindow_setDraw(struct SlWindow *win,
     DASSERT(win->surface.type == SlSurfaceType_topLevel,
             "WRITE MORE CODE HERE");
 
-    win->surface.draw = draw;
+    win->surface.draw = (void *) draw;
 
-    if(!win->wl_callback && win->buffer) {
-        Draw(win);
+    if(win->buffer) {
+        DrawAll(win);
         PostDrawDamage(win);
     }
 }
@@ -765,7 +940,7 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
 
     if(!win->buffer || needAllocate) {
         DASSERT(!win->buffer);
-        DASSERT(!win->surface.allocation.pixels);
+        DASSERT(!win->pixels);
 
         // This is the first call to RecreateBuffer() for this
         // xdg_surface.   RecreateBuffer() may get called again from a
@@ -779,7 +954,7 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
     }
 
     DASSERT(win->buffer);
-    DASSERT(win->surface.allocation.pixels);
+    DASSERT(win->pixels);
 
 
     // Perform the initial commit and wait for the first configure event
@@ -797,12 +972,13 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
         return true;
     }
 
-    Draw(win);
+    DrawAll(win);
 
     win->framed = false;
 
     if(!win->wl_callback) {
-        // We just use one frame call
+        // We just use one frame call unless a surface draw() returns
+        // SlDrawReturn_frame.
         //
         // TODO: This can fail...
         AddFrameListener(win);
@@ -846,6 +1022,10 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY),
         bool showing) {
 
     struct SlToplevel *t = calloc(1, sizeof(*t));
@@ -866,7 +1046,8 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
     AddToplevel(d, (void *) win);
 
     // Create the generic wayland surface stuff.
-    if(CreateWindow(d, win, w, h, x, y, draw))
+    if(CreateWindow(d, win, w, h, x, y, draw,
+                (void *) getChildrenPosition))
         goto fail;
 
     // Now create wayland toplevel specific stuff.

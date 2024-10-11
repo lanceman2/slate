@@ -42,8 +42,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     for(uint32_t y=0; y<h; y++) {
         for(uint32_t x=0; x<w; ++x) {
 
-            // ARGB color pix is for example
-            // like 0x0AFF0022 is alpha=0A red=FF green=00 blue=22
+            // ARGB color pix is for example:
+            // 0x0AFF0022 is alpha=0A red=FF green=00 blue=22 (in hex)
 
             if(x > 400)
                 *pix = 0x0AFF0000;
@@ -58,9 +58,11 @@ int draw(struct SlWindow *win, uint32_t *pixels,
         // Go to next line.
         pix += linePad;
     }
-
-    return 0; //continue to calling at every frame, like at 60 Hz.
+ 
+    // Continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_frame;
 }
+
 
 int main(void) {
 
@@ -75,7 +77,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
+            600, 600, 100, 10, draw/*draw()*/, 0, true/*showing*/);
     if(!win) return 1; // fail
 
     fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");

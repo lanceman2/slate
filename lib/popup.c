@@ -63,6 +63,10 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY),
         bool showing) {
 
     DASSERT(xdg_wm_base);
@@ -88,7 +92,7 @@ struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
     AddChild(t, win);
 
     // Start with the generic wayland surface stuff.
-    if(CreateWindow(d, win, w, h, x, y, draw))
+    if(CreateWindow(d, win, w, h, x, y, draw, getChildrenPosition))
         goto fail;
 
     DASSERT(win->width == w);

@@ -67,7 +67,7 @@ int draw(struct SlWindow *win, uint32_t *pix,
         pix += linePad;
     }
 
-    return 1; // stop calling, and remove the callback for now.
+    return SlDrawReturn_configure;
 }
 
 
@@ -178,7 +178,7 @@ fprintf(stderr, "\n");
     if(!d) return 1; // fail
 
     struct SlWindow *w = slWindow_createToplevel(
-            d, 800, 700, 10, 10, draw, true);
+            d, 800, 700, 10, 10, draw, 0, true);
     if(!w) return 1; // fail
 
 #ifdef LOOP

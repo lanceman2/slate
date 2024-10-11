@@ -70,7 +70,7 @@ void DrawBgColor(struct SlWindow *win, uint32_t bgColor,
         return;
 
     uint32_t width = win->surface.allocation.width;
-    uint32_t *pixels = win->surface.allocation.pixels;
+    uint32_t *pixels = win->pixels;
 
     while(x < xend) {
         int32_t y = y0;
@@ -142,7 +142,7 @@ bool slWindow_DrawText(struct SlWindow *win,
     f.pen.x = 0;
     f.pen.y = 0;
 
-    uint32_t *pixels = win->surface.allocation.pixels;
+    uint32_t *pixels = win->pixels;
     uint32_t wwidth = win->surface.allocation.width;
     uint32_t wheight = win->surface.allocation.height;
 

@@ -48,10 +48,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
         pix += linePad;
     }
 
-    //if(draw_count >= 0)
-    //    return 1; // stop calling
-
-    return 0; //continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_configure;
 }
 
 
@@ -69,11 +66,11 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *w = slWindow_createToplevel(
-            d, 500, 400, 10, 10, 0, true/*showing*/);
+            d, 500, 400, 10, 10, 0, 0, true/*showing*/);
     if(!w) return 1; // fail
 
     struct SlWindow *p = slWindow_createPopup(
-            w, 400, 300, -4400, -10000, draw, true/*showing*/);
+            w, 400, 300, -4400, -10000, draw, 0, true/*showing*/);
     if(!p) return 1; // fail
 
     while(slDisplay_dispatch(d));

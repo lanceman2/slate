@@ -93,10 +93,8 @@ int draw(struct SlWindow *win, uint32_t *pixels,
             pix < pixels + 9*h*stride/10; pix += stride)
         for(uint32_t *p = pix + w/3; p < pix + 2*w/3; ++p)
             *p = 0x209090B0; // 4 bytes: a r g b (not r g b a)
- 
-    return 1; // stop calling
 
-    //return 0; //continue to calling at every frame, like at 60 Hz.
+    return SlDrawReturn_configure;
 }
 
 
@@ -113,7 +111,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, true/*showing*/);
+            600, 600, 100, 10, draw/*draw()*/, 0, true/*showing*/);
     if(!win) return 1; // fail
 
     fprintf(stderr, "\n\nPress Key <Alt-F4> to exit\n\n");

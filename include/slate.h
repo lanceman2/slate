@@ -51,6 +51,15 @@ struct SlSurface;
 #define SLATE_PIXEL_SIZE   (4)
 
 
+
+enum SlDrawReturn {
+
+    SlDrawReturn_configure = 0,
+    
+    SlDrawReturn_frame
+};
+
+
 // Child widget packing gravity (for lack of a better word)
 //
 // Is there a "field/branch" in mathematics that we can know that will
@@ -121,11 +130,19 @@ SL_EXPORT struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY),
         bool showing);
 SL_EXPORT struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride),
+        void (*getChildrenPosition)(struct SlWindow *win,
+            uint32_t width, uint32_t height,
+            uint32_t childrenWidth, uint32_t childrenHeight,
+            uint32_t *childrenX, uint32_t *childrenY),
         bool showing);
 SL_EXPORT void slWindow_setDraw(struct SlWindow *win,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,
@@ -222,9 +239,13 @@ SL_EXPORT struct SlWidget *slWidget_create(
         // get the above width and height parameters.
         uint32_t borderWidth, // part of the container surface between
                               // children
-        int (*draw)(struct SlWindow *win, uint32_t *pixels,
+        int (*draw)(struct SlWidget *widget, uint32_t *pixels,
             uint32_t w, uint32_t h, uint32_t stride),
-        bool hide);
+        void (*getChildrenPosition)(struct SlWidget *widget,
+                uint32_t width, uint32_t height,
+                uint32_t childrenWidth, uint32_t childrenHeight,
+                uint32_t *childrenX, uint32_t *childrenY),
+        bool showing);
 
 
 // Should these next two functions be inline static?

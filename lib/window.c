@@ -1036,7 +1036,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
     win->surface.type = SlSurfaceType_topLevel;
 
     // Some defaults:
-    win->surface.gravity = SlGravity_One;
+    win->surface.gravity = SlGravity_TB;
     win->surface.showing = showing;
 
 

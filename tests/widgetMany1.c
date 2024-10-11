@@ -46,16 +46,39 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, 0, 0,
+            600, 600, 100, 10, 0/*draw()*/, 0,
             false/*showing*/);
     if(!win) return 1; // fail
 
-    slWidget_create((void *) win, 200, 100,
+    slWidget_create((void *) win, 300, 100,
             SlGravity_None/*SlGravity_None => non-container*/,
             SlGreed_None,
             0x20F0F000/* ARGB background color*/,
             0/* borderWidth*/,
             draw, 0, true/*showing*/);
+
+    slWidget_create((void *) win, 200, 100,
+            SlGravity_None/*SlGravity_None => non-container*/,
+            SlGreed_None,
+            0xF00000FF/* ARGB background color*/,
+            0/* borderWidth*/,
+            0/*draw()*/, 0, true/*showing*/);
+
+    struct SlWidget *w = slWidget_create((void *) win, 0, 0,
+            SlGravity_LR/*SlGravity_None => non-container*/,
+            SlGreed_None,
+            0xF0FF0000/* ARGB background color*/,
+            6/* borderWidth*/,
+            0/*draw()*/, 0, true/*showing*/);
+
+    for(int i=0; i<12; ++i)
+        slWidget_create((void *) w, 80, 50,
+            SlGravity_None/*SlGravity_None => non-container*/,
+            SlGreed_None,
+            0x2000FF00/* ARGB background color*/,
+            0/* borderWidth*/,
+            0/*draw()*/, 0, true/*showing*/);
+
 
     slWindow_show(win, true/*dispatch*/);
 

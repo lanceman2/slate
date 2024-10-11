@@ -160,9 +160,6 @@ struct SlWidget *slWidget_create(
 
     win->needAllocate = true;
 
-    // MORE CODE HERE ..........
-
-
     return widget;
 }
 

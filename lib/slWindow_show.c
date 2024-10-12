@@ -253,7 +253,7 @@ static void inline
 ShrinkAllocatedWidth(struct SlSurface *s, uint32_t max) {
 
     DASSERT(s);
-    DASSERT(max);
+    // If max is 0 we shrink rap it tight.
 
 WARN("NEED MORE CODE HERE");
 

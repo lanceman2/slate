@@ -833,8 +833,8 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
     // TODO:
     // Lets not code for funny width and heights yet. Uncommon values
     // could be used in the future.
-    ASSERT(w > 0);
-    ASSERT(h > 0);
+    //ASSERT(w > 0);
+    //ASSERT(h > 0);
 
     win->writingDQ = &win->dq1;
     win->readingDQ = &win->dq2;

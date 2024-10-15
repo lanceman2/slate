@@ -197,15 +197,12 @@ static inline void DrawSurface(struct SlWindow *win,
     // The starting pixel for this widget (or window) surface:
     pixels += s->allocation.x + s->allocation.y * stride / 4;
 
-    sl_drawFilledRectangle(pixels/*starting pixel*/,
-            0/*x*/, 0/*y*/,
-            s->allocation.width,
-            s->allocation.height,
-            stride, s->backgroundColor);
+    // Note: we do not draw the background color if there is a user draw()
+    // function callback.  The user that makes a draw() function can draw
+    // the background in one function call, if they choose to.
 
     if(s->draw) {
         // Call the libslate.so API users draw() callback
-
         int drawReturn = s->draw(s,
                 pixels,
                 s->allocation.width,
@@ -226,6 +223,12 @@ static inline void DrawSurface(struct SlWindow *win,
 
             case SlDrawReturn_configure:
         }
+    } else {
+        sl_drawFilledRectangle(pixels/*starting pixel*/,
+            0/*x*/, 0/*y*/,
+            s->allocation.width,
+            s->allocation.height,
+            stride, s->backgroundColor);
     }
 }
 

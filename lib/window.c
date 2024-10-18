@@ -338,7 +338,9 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
 
 
 // This creates struct SlWindow:: pixels, and buffer; and also
-// recreates.  See FreeBuffer()
+// recreates.
+//
+// See also FreeBuffer()
 //
 static inline bool RecreateBuffer(struct SlWindow *win) {
 
@@ -352,7 +354,7 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
 
     // Given the name Recreate we need to cleanup the old stuff.
     //
-    // This does nothing if there is no buffer stuff yet.
+    // This does nothing if there is no wl_buffer and stuff yet.
     FreeBuffer(win);
 
     // We will get these here:

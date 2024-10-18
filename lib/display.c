@@ -110,7 +110,8 @@ static void button(void *, struct wl_pointer *wl_pointer,
         uint32_t serial,
         uint32_t time,
         uint32_t button, uint32_t state) {
-    DSPEW();
+    DSPEW("button=%" PRIu32 " state=%" PRIu32, button, state);
+
 
 
 }

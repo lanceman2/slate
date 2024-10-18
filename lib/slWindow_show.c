@@ -396,14 +396,24 @@ void GetStrideAndStuff(struct SlWindow *win) {
 
     win->stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
     size_t sharedBufferSize = win->stride * win->surface.allocation.height;
-    if(win->sharedBufferSize != sharedBufferSize && win->buffer)
+    if(win->sharedBufferSize != sharedBufferSize && win->buffer) {
         // The shared memory pixel buffer will need to be rebuilt.
         FreeBuffer(win);
+        // Note: we are not recreating the shm/buffer/pool stuff at this
+        // time.  I think we need to wait for a compositor server event to
+        // recreate that the shm/buffer/pool (from SlWindow) stuff.
+    }
     win->sharedBufferSize = sharedBufferSize;
     win->needAllocate = false;
 }
 
 
+// Sets up (calculates) all the windows surfaces widths and heights.
+//
+// There could be many child widget surfaces in a window, and the total
+// window pixel shared memory size depends on all the widget surfaces
+// widths and heights that are in the window, and vise-versa.
+//
 void slWindow_compose(struct SlWindow *win) {
 
     DASSERT(win);

@@ -75,7 +75,7 @@ enum SlDrawReturn {
 // views.
 //
 // As in general relativity, gravity defines how space is distributed
-// among its massive pieces.  WTF.
+// among its massive pieces.
 //
 enum SlGravity {
 
@@ -85,7 +85,7 @@ enum SlGravity {
     SlGravity_None = 0, // For non-container widgets or windows
 
     // The container surface can only have zero or one widget, so it puts
-    // the child widget where ever it wants to, on its surface.
+    // the child widget where ever it wants to on its surface.
     SlGravity_One,
 
     // T Top, B Bottom, L Left, R Right

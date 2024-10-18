@@ -85,6 +85,11 @@ dynamically load more libraries); see by running:
   $ LD_DEBUG=files ./hello-wayland
 ```
 
+## Wayland Example C Code With A Little More Than Hello
+
+[wleird](https://github.com/emersion/wleird.git)
+Has stuff like cursor, resize, and subsurfaces.
+
 
 ## Testing libwayland-client.so and libffi.so for system resource leaks
 

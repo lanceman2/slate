@@ -323,6 +323,7 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
         //
         // TODO: Could this get tricky if there are lots of other events
         // that are not related to this surface/window?  Or could it...
+        // Thread-safety?
         //
         if(wl_display_dispatch(wl_display) == -1) {
 	    ERROR("wl_display_dispatch() failed can't configure window");
@@ -336,7 +337,9 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
 }
 
 
-// This creates struct SlWindow:: pixels, and buffer.
+// This creates struct SlWindow:: pixels, and buffer; and also
+// recreates.  See FreeBuffer()
+//
 static inline bool RecreateBuffer(struct SlWindow *win) {
 
     DASSERT(win);
@@ -428,6 +431,21 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
 
     // We have what we needed.  Inter-process shared memory at process
     // virtual address win->surface.allocation.pixels.
+    //
+    // We need to consider if it is worth it to keep the pool around
+    // and use wl_shm_pool_resize(), or to just recreate it at each
+    // resize.  We just do not know if creating this pool thingy costs us
+    // a system call or what...  Need to look at the libwayland-client.so
+    // code.  Okay: shm_pool_unref() in src/wayland-sh.c shows that the
+    // wl_shm_pool thingy has a memory mapping and a file descriptor in
+    // it, and I see a call to mremap(2), so ya maybe we should keep this
+    // shm_pool thingy around between resizing.
+    //
+    // TODO: keep this pool in struct SlWindow and destroy it with the
+    // SlWindow window.  I expect that this does not necessarily free all
+    // the shm_pool resources, but just decrements a counter and there's
+    // a reference to it in the wl_buffer that owns it after this destory.
+    //
     wl_shm_pool_destroy(pool);
 
     // Now that we've mapped the file and created the wl_buffer, we no
@@ -980,13 +998,18 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
     win->framed = false;
 
     if(!win->wl_callback) {
+
+        // TODO: is this really needed?
+
         // We just use one frame call unless a surface draw() returns
-        // SlDrawReturn_frame.
+        // SlDrawReturn_frame, and in that case it would have already
+        // called AddFrameListener(win).
         //
         // TODO: This can fail...
         AddFrameListener(win);
     }
 
+    // Force the server to act on the new pixels in this new window.
     PostDrawDamage(win);
 
     if(!dispatch) return false;
@@ -1015,11 +1038,12 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
         }
     }
 
-    // reset
+    // reset flag:
     win->framed = false;
 
     return false; // success
 }
+
 
 struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,

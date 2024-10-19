@@ -129,3 +129,20 @@ We could git clone https://gitlab.freedesktop.org/cairo/cairo
 
 We have a test program tests/cairoDraw that uses libslate.so with it
 being linked with libcairo.so.
+
+## List Of Code Change Requests
+
+- [memory leak in wleird wayland client examples](
+https://gitlab.freedesktop.org/emersion/wleird/-/issues/33)
+
+- [memory leak in libpixman](
+https://gitlab.freedesktop.org/pixman/pixman/-/issues/111)
+
+I was somehow able to make these "Issues", but it appears that that is the
+extent of what I'll be able to do.  I have a sense that these "Issues" may
+not be seen as spam.
+
+Looks like a gitlab service is as good as github, for what I need.
+All the newer stuff that is in github.com is not so helpful for me.
+That's good to see.
+

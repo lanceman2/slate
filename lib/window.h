@@ -221,19 +221,75 @@ struct SlWindow {
     // parent=0.
     struct SlWindow *parent;
 
+    // I have found it hard to believe that they find it necessary to
+    // expose 5 window surface specific data structures to the
+    // libwayland-client.so API (including XDG shit) to make a fucking
+    // window on the monitor (screen).  When you first look at it these 5
+    // structures may as well be one hundred structures, especially
+    // considering that there at about 10 (or so) more global (that is
+    // global static) wayland related structures that we put (in
+    // libslate.so) in the parent-like display (SlDisplay) structure.
+    // Without all 5 (plus the 10 or so display thingys) of these
+    // structures we will have no windows at all.
+    //
+    // Looking at it another way: wayland tends to have a lot of fine
+    // grain user interface structure, and hence it may be very flexible.
+    // The libslate.so API is much less flexible, but has far fewer
+    // user interfaces.
+    //
+    // The idea of the libslate.so API is to draw to pixels on a window
+    // with just 5 lines of C code.  Orders of magnitude less lines of
+    // code.  And (in the other direction) an order of magnitude less
+    // dependency and portability code than GTK and Qt (bloat monsters);
+    // with much better performance; a whole (1) pixel buffer memory copy
+    // less.  Or is that so...
+    //
+    // We give the libslate.so user the ability to avoid having more
+    // layers memory copying.  Yes, we know that there is an unavoidable
+    // memory copy from the shared pixel memory to whatever the compositor
+    // server writes to to show pixels to the end user, but we let the
+    // libslate.so user limit the memory copying in their code.  GTK and
+    // Qt make it hard, if not impossible, to have user code that directly
+    // writes to the wayland client/server shared memory pixels.  That
+    // means we should be measurable increases in 2D drawing speed.
+    //
+    // I'd expect that the OpenGL windows in GTK and Qt have removed
+    // unnecessary pixel memory copying that I speak of.  Q: Can we use
+    // the OpenGL GTK (or Qt) window thingy as a high performance 2D
+    // drawing surface?
+    //
+    // Q: Is there an interface (in GTK or Qt) to get a pointer to a
+    // location in the wayland client/server shared memory pointer?
+    //
+    // If not; does that mean that all drawing adds a memory copy layer
+    // in GTK and Qt.  In the default case that is true.
+    //
+    //
+    //
+    // TODO: We need to see if there is easy access to parameters in this
+    // wayland shit, such that we can not bother having redundant
+    // manifestations of said parameters in this (SlWindow) structure;
+    // like for example "width".
+    //
     // We store/get a pointer to this SlWindow in the wl_surface user_data
     // using: wl_surface_set_user_data() and wl_surface_get_user_data().
-    struct wl_surface *wl_surface;
-    struct xdg_surface *xdg_surface;
+    //
+    // Counting the five (5) wayland structures that are specific to a
+    // slate window.
+    struct wl_surface *wl_surface;   // 1
+    //
+    struct xdg_surface *xdg_surface; // 2
+    struct wl_buffer *wl_buffer;     // 3
+    struct wl_callback *wl_callback; // 4
+    struct wl_shm_pool *wl_shm_pool; // 5
 
-    struct wl_buffer *buffer;
 
-    struct wl_callback *wl_callback;
-
-    // For the doubly linked list of children in the toplevel
+    // For the doubly linked list of children (widgets) in the toplevel
     // (firstChild, lastChild) windows.
+    //
+    // popup windows use this.  Maybe other types of windows to come.
+    //
     struct SlWindow *prev, *next;
-
 
     // Negative values put the window at a root window edge.  Examples:
     //   -1,0  ==> right,top

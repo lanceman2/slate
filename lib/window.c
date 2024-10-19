@@ -29,7 +29,7 @@ static inline void PostDrawDamage(struct SlWindow *win) {
 
     struct wl_surface *wl_surface = win->wl_surface;
 
-    wl_surface_attach(wl_surface, win->buffer, 0, 0);
+    wl_surface_attach(wl_surface, win->wl_buffer, 0, 0);
 
     // For newer version
     // wl_surface_damage_buffer(wl_surface, 0, 0, INT32_MAX, INT32_MAX);
@@ -256,7 +256,7 @@ static inline void DrawAll(struct SlWindow *win) {
 
     DASSERT(win);
     DASSERT(win->wl_surface);
-    DASSERT(win->buffer);
+    DASSERT(win->wl_buffer);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
     DASSERT(win->pixels);
@@ -283,9 +283,9 @@ void FreeBuffer(struct SlWindow *win) {
 
     DASSERT(win);
 
-    if(win->buffer) {
-        wl_buffer_destroy(win->buffer);
-        win->buffer = 0;
+    if(win->wl_buffer) {
+        wl_buffer_destroy(win->wl_buffer);
+        win->wl_buffer = 0;
     }
 
     if(win->pixels) {
@@ -359,7 +359,7 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
 
     // We will get these here:
     DASSERT(!win->pixels);
-    DASSERT(!win->buffer);
+    DASSERT(!win->wl_buffer);
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
 
@@ -401,11 +401,11 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
         return true;
     }
 
-    win->buffer = wl_shm_pool_create_buffer(pool, 0,
+    win->wl_buffer = wl_shm_pool_create_buffer(pool, 0,
             win->surface.allocation.width,
             win->surface.allocation.height,
             stride, WL_SHM_FORMAT_ARGB8888);
-    if(!win->buffer) {
+    if(!win->wl_buffer) {
         ERROR("wl_shm_pool_create_buffer() failed");
         wl_shm_pool_destroy(pool);
         // TODO: What if this fails?:
@@ -473,7 +473,7 @@ static void xdg_surface_handle_configure(struct SlWindow *win,
     DASSERT(win->xdg_surface);
     DASSERT(win->xdg_surface == xdg_surface);
     DASSERT(!win->needAllocate);
-    DASSERT(win->buffer);
+    DASSERT(win->wl_buffer);
     DASSERT(win->pixels);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
@@ -921,7 +921,7 @@ bool CreateWindow(struct SlDisplay *d, struct SlWindow *win,
         return true;
     }
 
-    DASSERT(!win->buffer);
+    DASSERT(!win->wl_buffer);
     DASSERT(win->wl_surface);
     DASSERT(!win->pixels);
     DASSERT(!win->wl_callback);
@@ -943,7 +943,7 @@ void slWindow_setDraw(struct SlWindow *win,
 
     win->surface.draw = (void *) draw;
 
-    if(win->buffer) {
+    if(win->wl_buffer) {
         DrawAll(win);
         PostDrawDamage(win);
     }
@@ -961,8 +961,8 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
     if(win->needAllocate)
         slWindow_compose(win);
 
-    if(!win->buffer || needAllocate) {
-        DASSERT(!win->buffer);
+    if(!win->wl_buffer || needAllocate) {
+        DASSERT(!win->wl_buffer);
         DASSERT(!win->pixels);
 
         // This is the first call to RecreateBuffer() for this
@@ -976,7 +976,7 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
         }
     }
 
-    DASSERT(win->buffer);
+    DASSERT(win->wl_buffer);
     DASSERT(win->pixels);
 
 

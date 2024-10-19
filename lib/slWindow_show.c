@@ -396,7 +396,7 @@ void GetStrideAndStuff(struct SlWindow *win) {
 
     win->stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
     size_t sharedBufferSize = win->stride * win->surface.allocation.height;
-    if(win->sharedBufferSize != sharedBufferSize && win->buffer) {
+    if(win->sharedBufferSize != sharedBufferSize && win->wl_buffer) {
         // The shared memory pixel buffer will need to be rebuilt.
         FreeBuffer(win);
         // Note: we are not recreating the shm/buffer/pool stuff at this

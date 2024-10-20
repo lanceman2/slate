@@ -21,8 +21,9 @@ endif
 $(info WL_CFLAGS="$(WL_CFLAGS)" WL_LDFLAGS="$(WL_LDFLAGS)")
 
 # TODO: Do these make lines add other failure modes?:
-WL_PROTOCOL := $(shell pkg-config wayland-protocols\
- --variable=pkgdatadir)/stable/xdg-shell/xdg-shell.xml
+WL_PROTOCOL_DIR := $(shell pkg-config wayland-protocols --variable=pkgdatadir)
+
+WL_PROTOCOL := $(WL_PROTOCOL_DIR)/stable/xdg-shell/xdg-shell.xml
 WL_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
 
 undefine libdir

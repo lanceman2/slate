@@ -37,7 +37,7 @@ int draw(struct SlWindow *win, uint32_t *pixels,
     uint32_t *pix = pixels;
     // linePad is the distance in pixels to the end of a x row
     // from the last pixel drawn.  linePad is likely 0.
-    // Note: stride >= w * 4 (width*4).
+    // Note: stride >= w * 4    (is width*4).
     const uint32_t linePad = stride/4 - w;
     for(uint32_t y=0; y<h; y++) {
         for(uint32_t x=0; x<w; ++x) {

@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -5,7 +6,8 @@
 #include <pthread.h>
 #include <wayland-client.h>
 
-#include "xdg-shell-client-protocol.h"
+#include "xdg-shell-protocol.h"
+#include "xdg-decoration-protocol.h"
 
 #include "../include/slate.h"
 
@@ -287,23 +289,6 @@ void FreeBuffer(struct SlWindow *win) {
         wl_buffer_destroy(win->wl_buffer);
         win->wl_buffer = 0;
     }
-
-    if(win->pixels) {
-
-        DASSERT(win->sharedBufferSize);
-
-        if(munmap(win->pixels,
-                    win->sharedBufferSize)) {
-            ERROR("munmap(%p,%zu) failed",
-                    win->pixels,
-                    win->sharedBufferSize);
-            // TODO: What can we do about this failure???
-            DASSERT(0, "munmap(%p,%zu) failed",
-                    win->pixels,
-                    win->sharedBufferSize);
-        }
-        win->pixels = 0;
-    }
 }
 
 
@@ -337,8 +322,24 @@ bool WaitForConfigureXDGSurface(struct SlWindow *win) {
 }
 
 
-// This creates struct SlWindow:: pixels, and buffer; and also
-// recreates.
+static inline
+void GetStrideAndSize(struct SlWindow *win) {
+
+    win->stride = win->surface.allocation.width * SLATE_PIXEL_SIZE;
+    size_t sharedBufferSize = win->stride * win->surface.allocation.height;
+    if(win->sharedBufferSize != sharedBufferSize && win->wl_buffer) {
+        // The shared memory pixel buffer will need to be rebuilt.
+        FreeBuffer(win);
+        // Note: we are not recreating the shm/buffer/pool stuff at this
+        // time.  I think we need to wait for a compositor server event to
+        // recreate that the shm/buffer/pool (from SlWindow) stuff.
+    }
+    win->sharedBufferSize = sharedBufferSize;
+}
+
+
+// This creates (and recreates) struct SlWindow:: pixels, and buffer;
+// the wayland pixel client/server shared memory.
 //
 // See also FreeBuffer()
 //
@@ -348,9 +349,6 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     DASSERT(!win->needAllocate);
     DASSERT(win->surface.allocation.width);
     DASSERT(win->surface.allocation.height);
-    DASSERT(win->surface.allocation.width * SLATE_PIXEL_SIZE ==
-            win->stride);
-    DASSERT(win->sharedBufferSize);
 
     // Given the name Recreate we need to cleanup the old stuff.
     //
@@ -358,111 +356,122 @@ static inline bool RecreateBuffer(struct SlWindow *win) {
     FreeBuffer(win);
 
     // We will get these here:
-    DASSERT(!win->pixels);
     DASSERT(!win->wl_buffer);
     DASSERT(!win->surface.allocation.x);
     DASSERT(!win->surface.allocation.y);
 
-    int stride = win->stride;
     // in bytes
-    size_t size = win->sharedBufferSize;
     uint32_t *pixels;
 
-    int fd = create_shm_file(size);
+    if(!win->wl_shm_pool) {
 
-    if(fd < 0)
-        // create_shm_file() should have spewed already.
-	return true;
+        DASSERT(!win->sharedBufferSize);
+        DASSERT(!win->stride);
+        DASSERT(!win->pixels);
 
-    // Map the (pixels) shared memory file to this processes virtual
-    // address space.
-    pixels = mmap(0, size,
+        GetStrideAndSize(win);
+
+        int fd = create_shm_file(win->sharedBufferSize);
+
+        if(fd < 0)
+            // create_shm_file() should have spewed already.
+	    goto preMapFail;
+
+        // Map the (pixels) shared memory file to this processes virtual
+        // address space.
+        pixels = mmap(0, win->sharedBufferSize,
             PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    if(pixels == MAP_FAILED) {
-        ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
-                "MAP_SHARED,fd=%d,0) failed", size, fd);
-	close(fd);
-	return true;
-    }
+        if(pixels == MAP_FAILED) {
+            ERROR("mmap(0, size=%zu,PROT_READ|PROT_WRITE,"
+                    "MAP_SHARED,fd=%d,0) failed", win->sharedBufferSize, fd);
+            close(fd);
+            goto preMapFail;
+        }
 
-    // Create a wl_buffer from our shared memory file descriptor.
-    //
-    // Here we pass the file descriptor to the compositor process (or at
-    // least get ready to pass it) via a UNIX domain socket.  The
-    // compositor process should take care of removing (via unlink(2)) the
-    // file after the inter-process shared pixels memory is mapped in the
-    // compositor process.
-    struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
-    if(!pool) {
-        ERROR("wl_shm_create_pool() failed");
-        // TODO: What if this fails?:
-        ASSERT(munmap(pixels, size) == 0);
+        // Here we pass the file descriptor to the compositor process (or
+        // at least get ready to pass it) via a UNIX domain socket.  The
+        // compositor process should take care of removing (via unlink(2))
+        // the file after the inter-process shared pixels memory is mapped
+        // in the compositor process.
+
+        win->wl_shm_pool = wl_shm_create_pool(shm, fd, win->sharedBufferSize);
+        if(!win->wl_shm_pool) {
+            ERROR("wl_shm_create_pool() failed");
+            close(fd);
+            goto postMapFail;
+        }
         close(fd);
-        return true;
+    } else {
+
+        DASSERT(win->sharedBufferSize);
+        DASSERT(win->stride);
+        DASSERT(win->pixels);
+
+        ASSERT(0, "YES SURFACE RESIZE.  Now remove this ASSERT()");
+
+        size_t oldSize = win->sharedBufferSize;
+        GetStrideAndSize(win);
+        pixels = win->pixels;
+
+        if(oldSize != win->sharedBufferSize) {
+
+            void *oldPixels = win->pixels;
+            pixels = mremap(oldPixels, oldSize, win->sharedBufferSize,
+                    MREMAP_MAYMOVE, 0);
+            if((void *) pixels == MAP_FAILED) {
+                // TODO: What if this fails?:
+                ERROR("mremap(%p,,) failed", oldPixels);
+                goto postMapFail;
+            }
+            //
+            // It's a little unclear to me how this can work with the
+            // using the mremap() above; maybe we much keep the file
+            // descriptor from before, and use mmap() again.
+            //
+            wl_shm_pool_resize(win->wl_shm_pool, win->sharedBufferSize);
+        }
+        // else we can use the previous shared memory mapping since the
+        // size did not change.
     }
 
-    win->wl_buffer = wl_shm_pool_create_buffer(pool, 0,
+    win->wl_buffer = wl_shm_pool_create_buffer(win->wl_shm_pool, 0,
             win->surface.allocation.width,
             win->surface.allocation.height,
-            stride, WL_SHM_FORMAT_ARGB8888);
+            win->stride, WL_SHM_FORMAT_ARGB8888);
     if(!win->wl_buffer) {
         ERROR("wl_shm_pool_create_buffer() failed");
-        wl_shm_pool_destroy(pool);
-        // TODO: What if this fails?:
-        ASSERT(munmap(pixels, size) == 0);
-        close(fd);
-        return true;
+        goto postMapFail;
     }
 
     // I declare that we officially have an allocation for this slate
     // window surface.
     //
-    // We define it this way for x,y allocations in slate window (at least
-    // for toplevel).
-    //
-    // TODO: What about slate non-toplevel windows?
-    //
-    // Kind of stupid at this point, but the allocation::width,height can
-    // set now to the user requested size win::surface::width,height.
-    //
-    // We need to keep the user requested size separate from the allocated
-    // size, in case a resize event comes from the compositor to change
-    // the allocated size, making the allocated size different from the
-    // API user requested size.
     win->pixels = pixels;
 
     // We have what we needed.  Inter-process shared memory at process
-    // virtual address win->surface.allocation.pixels.
-    //
-    // We need to consider if it is worth it to keep the pool around
-    // and use wl_shm_pool_resize(), or to just recreate it at each
-    // resize.  We just do not know if creating this pool thingy costs us
-    // a system call or what...  Need to look at the libwayland-client.so
-    // code.  Okay: shm_pool_unref() in src/wayland-sh.c shows that the
-    // wl_shm_pool thingy has a memory mapping and a file descriptor in
-    // it, and I see a call to mremap(2), so ya maybe we should keep this
-    // shm_pool thingy around between resizing.
-    //
-    // TODO: keep this pool in struct SlWindow and destroy it with the
-    // SlWindow window.  I expect that this does not necessarily free all
-    // the shm_pool resources, but just decrements a counter and there's
-    // a reference to it in the wl_buffer that owns it after this destory.
-    //
-    wl_shm_pool_destroy(pool);
-
-    // Now that we've mapped the file and created the wl_buffer, we no
-    // longer need to keep file descriptor opened.
-    close(fd);
+    // virtual address win->pixels.
 
     // Start with a some known value for the pixel memory.  The value of
     // all zeros is not visible on my screen.
     sl_drawFilledRectangle(pixels/*surface starting pixel*/,
             0/*x*/, 0/*y*/,
             win->surface.allocation.width,
-            win->surface.allocation.height, stride,
+            win->surface.allocation.height, win->stride,
             win->surface.backgroundColor);
 
-    return false;
+    return false; // success
+
+postMapFail:
+
+    ASSERT(munmap(win->pixels, win->sharedBufferSize) == 0);
+
+preMapFail:
+
+    win->pixels = 0;
+    win->sharedBufferSize = 0;
+    win->stride = 0;
+
+    return true; // error
 }
 
 
@@ -615,6 +624,23 @@ void _slWindow_destroy(struct SlDisplay *d,
 
     // Free the shared memory pixels buffer.
     FreeBuffer(win);
+
+    if(win->wl_shm_pool)
+        wl_shm_pool_destroy(win->wl_shm_pool);
+
+    if(win->pixels) {
+        DASSERT(win->sharedBufferSize);
+        if(munmap(win->pixels,
+                    win->sharedBufferSize)) {
+            ERROR("munmap(%p,%zu) failed",
+                    win->pixels,
+                    win->sharedBufferSize);
+            // TODO: What can we do about this failure???
+            DASSERT(0, "munmap(%p,%zu) failed",
+                    win->pixels,
+                    win->sharedBufferSize);
+        }
+    }
 
     if(win->wl_callback)
         wl_callback_destroy(win->wl_callback);
@@ -1092,6 +1118,16 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         ERROR("xdg_toplevel_add_listener(,,) failed");
         goto fail;
     }
+
+    if(zxdg_decoration_manager) {
+        // Let the compositor do all the complicated window management
+	struct zxdg_toplevel_decoration_v1 *decoration =
+	        zxdg_decoration_manager_v1_get_toplevel_decoration(
+		        zxdg_decoration_manager, t->xdg_toplevel);
+	zxdg_toplevel_decoration_v1_set_mode(decoration,
+		ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    }
+
 
     // We will call ShowSurface() at a later time if the window is
     // not set as "showing" yet.

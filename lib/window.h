@@ -221,65 +221,62 @@ struct SlWindow {
     // parent=0.
     struct SlWindow *parent;
 
-    // I have found it hard to believe that they find it necessary to
-    // expose 5 window surface specific data structures to the
-    // libwayland-client.so API (including XDG shit) to make a fucking
-    // window on the monitor (screen).  When you first look at it these 5
-    // structures may as well be one hundred structures, especially
-    // considering that there at about 10 (or so) more global (that is
-    // global static) wayland related structures that we put (in
-    // libslate.so) in the parent-like display (SlDisplay) structure.
-    // Without all 5 (plus the 10 or so display thingys) of these
-    // structures we will have no windows at all.
-    //
-    // Looking at it another way: wayland tends to have a lot of fine
-    // grain user interface structure, and hence it may be very flexible.
-    // The libslate.so API is much less flexible, but has far fewer
-    // user interfaces.
+    // Wayland tends to have a lot of fine grain user interface structure
+    // as we see from the 5 wayland structures below plus the 8 process
+    // level display like structures.  The libslate.so API is much less
+    // flexible, but has far fewer user interfaces.
     //
     // The idea of the libslate.so API is to draw to pixels on a window
     // with just 5 lines of C code.  Orders of magnitude less lines of
     // code.  And (in the other direction) an order of magnitude less
-    // dependency and portability code than GTK and Qt (bloat monsters);
-    // with much better performance; a whole (1) pixel buffer memory copy
-    // less.  Or is that so...
+    // dependency, portability code, and user code, than when using GTK
+    // and Qt (bloat monsters); with much better performance; maybe a
+    // whole (1 layer of) pixel buffer memory copy less.  Or is that
+    // so...
     //
     // We give the libslate.so user the ability to avoid having more
-    // layers memory copying.  Yes, we know that there is an unavoidable
-    // memory copy from the shared pixel memory to whatever the compositor
-    // server writes to to show pixels to the end user, but we let the
-    // libslate.so user limit the memory copying in their code.  GTK and
-    // Qt make it hard, if not impossible, to have user code that directly
-    // writes to the wayland client/server shared memory pixels.  That
-    // means we should be measurable increases in 2D drawing speed.
+    // layers pixel memory copying.  Yes, we know that there is an
+    // unavoidable memory copy from the shared pixel memory to whatever
+    // the compositor server writes to to show pixels to the end user, but
+    // we let the libslate.so user limit the memory copying in their code.
+    // GTK and Qt make it hard, if not impossible, to have user code that
+    // directly writes to the wayland client/server shared memory pixels.
+    // That means we should be measurable increases in 2D drawing speed.
     //
     // I'd expect that the OpenGL windows in GTK and Qt have removed
     // unnecessary pixel memory copying that I speak of.  Q: Can we use
     // the OpenGL GTK (or Qt) window thingy as a high performance 2D
     // drawing surface?
     //
-    // Q: Is there an interface (in GTK or Qt) to get a pointer to a
-    // location in the wayland client/server shared memory pointer?
-    //
-    // If not; does that mean that all drawing adds a memory copy layer
-    // in GTK and Qt.  In the default case that is true.
-    //
+    // Q: Is there an interface (in GTK or Qt) to get a pointer to the
+    // wayland client/server pixel shared memory?  I have seen exposed
+    // wayland client stuff in the Qt interfaces, but not a single example
+    // that uses it.  Is it a drawing layer that is accessible to the Qt
+    // API user?  With no example it's hard to tell if it's exposed for
+    // just internal use (due to an old short-coming of C++) or API user
+    // use.  The Qt documentation losses me.  Too many layers.  I can't
+    // get from a QWindow to any wayland-client objects that are under it,
+    // but I know it has to be there in say a QSurface::RasterSurface.  I
+    // can only guess that Qt is designed without exposing any of the
+    // libwayland-client.so structures through a C++ user interface.  That
+    // makes sense that Qt user API interfaces are not Linux desktop
+    // friendly, and hence there is no non-hackish way to access the
+    // "wayland shared memory pixels".
     //
     //
     // TODO: We need to see if there is easy access to parameters in this
     // wayland shit, such that we can not bother having redundant
     // manifestations of said parameters in this (SlWindow) structure;
-    // like for example "width".
+    // like for example surface "width".
     //
     // We store/get a pointer to this SlWindow in the wl_surface user_data
     // using: wl_surface_set_user_data() and wl_surface_get_user_data().
     //
     // Counting the five (5) wayland structures that are specific to a
-    // slate window.
-    struct wl_surface *wl_surface;   // 1
-    //
+    // particular slate window.
+    struct wl_surface  *wl_surface;  // 1
     struct xdg_surface *xdg_surface; // 2
-    struct wl_buffer *wl_buffer;     // 3
+    struct wl_buffer   *wl_buffer;   // 3
     struct wl_callback *wl_callback; // 4
     struct wl_shm_pool *wl_shm_pool; // 5
 
@@ -287,7 +284,8 @@ struct SlWindow {
     // For the doubly linked list of children (widgets) in the toplevel
     // (firstChild, lastChild) windows.
     //
-    // popup windows use this.  Maybe other types of windows to come.
+    // popup windows use this.  Maybe there are other types of windows to
+    // come.
     //
     struct SlWindow *prev, *next;
 
@@ -318,9 +316,6 @@ struct SlWindow {
     // wait to do that later before we draw.
     //
     bool needAllocate;
-
-    bool needRedraw; // Draw of all widgets is needed due to
-                     // window resize or configure.
 };
 
 

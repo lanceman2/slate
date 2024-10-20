@@ -6,13 +6,14 @@
 #include <pthread.h>
 #include <wayland-client.h>
 
-#include "xdg-shell-client-protocol.h"
+#include "xdg-shell-protocol.h"
 
 #include "../include/slate.h"
 
 #include "debug.h"
 #include "window.h"
 #include "widget.h"
+
 
 struct SlSurface *slWidget_getSurface(struct SlWidget *widget) {
 

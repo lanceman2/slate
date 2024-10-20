@@ -4,14 +4,14 @@
 #include <pthread.h>
 #include <wayland-client.h>
 
-#include "xdg-shell-client-protocol.h"
+#include "xdg-shell-protocol.h"
+#include "xdg-decoration-protocol.h"
 
 #include "../include/slate.h"
 
 #include "debug.h"
 #include "window.h"
 #include "display.h"
-
 
 
 struct wl_shm *shm = 0;
@@ -47,6 +47,7 @@ static struct SlWindow *kbWindow = 0;
 
 // returned from wl_display_connect().
 struct wl_display *wl_display = 0;
+struct zxdg_decoration_manager_v1 *zxdg_decoration_manager = 0;
 
 static struct wl_registry *wl_registry = 0;
 static struct wl_seat *wl_seat = 0;
@@ -255,6 +256,14 @@ static void handle_global(void *data, struct wl_registry *registry,
             ERROR("xdg_wm_base_add_listener(,,) failed");
             handle_global_error = 6;
         }
+    } else if(!strcmp(interface, zxdg_decoration_manager_v1_interface.name)) {
+        zxdg_decoration_manager = wl_registry_bind(registry, name,
+	        &zxdg_decoration_manager_v1_interface, 1);
+        if(!zxdg_decoration_manager) {
+            ERROR("wl_registry_bind(,,) for zxdg_decoration_manager failed");
+            handle_global_error = 7;
+            return;
+        }
     }
 }
 
@@ -313,6 +322,12 @@ static inline void CleanupProcess(void) {
         // Valgrind shows this to cleanup.
         wl_compositor_destroy(compositor);
         compositor = 0;
+    }
+
+    if(zxdg_decoration_manager) {
+        // Valgrind shows this to cleanup.
+        zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager);
+        zxdg_decoration_manager = 0;
     }
 
     if(xdg_wm_base) {

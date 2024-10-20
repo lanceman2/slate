@@ -11,19 +11,30 @@ include $(root)/pkg-cairo.make
 
 
 xdg-shell-protocol.c:
-	$(WL_SCANNER) private-code $(WL_PROTOCOL) xdg-shell-protocol.c
+	$(WL_SCANNER) private-code $(WL_PROTOCOL) $@
+xdg-shell-protocol.h:
+	$(WL_SCANNER) client-header $(WL_PROTOCOL) $@
 
-xdg-shell-client-protocol.h:
-	$(WL_SCANNER) client-header $(WL_PROTOCOL)\
- xdg-shell-client-protocol.h
+xdg_decoration_xml := unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+
+xdg-decoration-protocol.c:
+	$(WL_SCANNER) private-code $(WL_PROTOCOL_DIR)/$(xdg_decoration_xml) $@
+xdg-decoration-protocol.h:
+	$(WL_SCANNER) client-header $(WL_PROTOCOL_DIR)/$(xdg_decoration_xml) $@
 
 # We need to build xdg-shell-client-protocol.h before we create depend
 # files (we made edits to ../quickbuild.make for this case):
-PRE_BUILD := xdg-shell-client-protocol.h
-BUILD_NO_INSTALL := xdg-shell-protocol.c
+PRE_BUILD :=\
+ xdg-shell-protocol.h\
+ xdg-decoration-protocol.h
+
+BUILD_NO_INSTALL :=\
+ xdg-shell-protocol.c\
+ xdg-decoration-protocol.c
 
 libslate.so_SOURCES :=\
  xdg-shell-protocol.c\
+ xdg-decoration-protocol.c\
  debug.c\
  display.c\
  window.c\

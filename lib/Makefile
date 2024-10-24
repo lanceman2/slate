@@ -68,8 +68,8 @@ libslate.so_CFLAGS :=\
 #   readelf -d libslate.so
 #
 libslate.so_LDFLAGS :=\
- $(WL_LDFLAGS)\
  $(CAIRO_LDFLAGS)\
+ $(WL_LDFLAGS)\
  $(FONTCONFIG_LDFLAGS)\
  -Wl,--retain-symbols-file=retain-symbols.txt
 libslate.so: retain-symbols.txt

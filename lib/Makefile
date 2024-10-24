@@ -76,8 +76,8 @@ libslate.so_CFLAGS :=\
 # of libpixman-1.so.
 #
 libslate.so_LDFLAGS :=\
- $(CAIRO_LDFLAGS)\
  $(PIXMAN_LDFLAGS)\
+ $(CAIRO_LDFLAGS)\
  $(WL_LDFLAGS)\
  $(FONTCONFIG_LDFLAGS)\
  -Wl,--retain-symbols-file=retain-symbols.txt

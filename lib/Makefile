@@ -8,6 +8,7 @@ include $(root)/pkg-freetype2.make
 include $(root)/pkg-fontconfig.make
 include $(root)/pkg-waylandclient.make
 include $(root)/pkg-cairo.make
+include $(root)/pkg-pixman-1.make
 
 
 xdg-shell-protocol.c:
@@ -63,12 +64,20 @@ libslate.so_CFLAGS :=\
 # compiled with X11 client libraries.  This way may not work for other
 # cases.  At some put we need an operating system package manager that
 # fixes this kind of (DSO dependency hell) shit, like NixOS.
+#
 # Run in a shell:
 #
 #   readelf -d libslate.so
 #
+#
+# It would appear there is no order that works for the way all the
+# libraries can be installed; for all users.  We added
+# $(PIXMAN_LDFLAGS) because we wanted to use a our patched version
+# of libpixman-1.so.
+#
 libslate.so_LDFLAGS :=\
  $(CAIRO_LDFLAGS)\
+ $(PIXMAN_LDFLAGS)\
  $(WL_LDFLAGS)\
  $(FONTCONFIG_LDFLAGS)\
  -Wl,--retain-symbols-file=retain-symbols.txt

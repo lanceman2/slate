@@ -17,7 +17,7 @@ $(warning software package pangocairo was not found)
 undefine PANGOCAIRO_LDFLAGS
 else
 # Spew what pangocairo compiler options we have found
-$(info PANGOCAIRO_CFLAGS="$(PANGOCAIRO_CFLAGS)" PANGOCAIRO_LDFLAGS="$(PANGOCAIRO_LDFLAGS)")
+#$(info PANGOCAIRO_CFLAGS="$(PANGOCAIRO_CFLAGS)" PANGOCAIRO_LDFLAGS="$(PANGOCAIRO_LDFLAGS)")
 endif
 
 undefine libdir 

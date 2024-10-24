@@ -17,7 +17,7 @@ $(warning software package libglib-2.0 was not found)
 undefine GLIB2_LDFLAGS
 else
 # Spew what libglib-2.0 compiler options we have found
-$(info GLIB2_CFLAGS="$(GLIB2_CFLAGS)" GLIB2_LDFLAGS="$(GLIB2_LDFLAGS)")
+#$(info GLIB2_CFLAGS="$(GLIB2_CFLAGS)" GLIB2_LDFLAGS="$(GLIB2_LDFLAGS)")
 endif
 
 undefine libdir

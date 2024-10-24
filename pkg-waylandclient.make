@@ -18,7 +18,7 @@ $(error software package wayland-client was not found)
 endif
 
 # Spew what wayland client compiler options we have found
-$(info WL_CFLAGS="$(WL_CFLAGS)" WL_LDFLAGS="$(WL_LDFLAGS)")
+#$(info WL_CFLAGS="$(WL_CFLAGS)" WL_LDFLAGS="$(WL_LDFLAGS)")
 
 # TODO: Do these make lines add other failure modes?:
 WL_PROTOCOL_DIR := $(shell pkg-config wayland-protocols --variable=pkgdatadir)

@@ -16,6 +16,6 @@ $(error software package freetype2 was not found)
 endif
 
 # Spew what freetype2 compiler options we have found
-$(info FREETYPE2_CFLAGS="$(FREETYPE2_CFLAGS)" FREETYPE2_LDFLAGS="$(FREETYPE2_LDFLAGS)")
+#$(info FREETYPE2_CFLAGS="$(FREETYPE2_CFLAGS)" FREETYPE2_LDFLAGS="$(FREETYPE2_LDFLAGS)")
 
 undefine libdir

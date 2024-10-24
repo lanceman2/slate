@@ -17,6 +17,6 @@ $(error software package cairo was not found)
 endif
 
 # Spew what cairo compiler options we have found
-$(info CAIRO_CFLAGS="$(CAIRO_CFLAGS)" CAIRO_LDFLAGS="$(CAIRO_LDFLAGS)")
+#$(info CAIRO_CFLAGS="$(CAIRO_CFLAGS)" CAIRO_LDFLAGS="$(CAIRO_LDFLAGS)")
 
 undefine libdir 

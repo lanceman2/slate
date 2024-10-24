@@ -17,6 +17,6 @@ $(error software package fontconfig was not found)
 endif
 
 # Spew what fontconfig compiler options we have found
-$(info FONTCONFIG_CFLAGS="$(FONTCONFIG_CFLAGS)" FONTCONFIG_LDFLAGS="$(FONTCONFIG_LDFLAGS)")
+#$(info FONTCONFIG_CFLAGS="$(FONTCONFIG_CFLAGS)" FONTCONFIG_LDFLAGS="$(FONTCONFIG_LDFLAGS)")
 
 undefine libdir 

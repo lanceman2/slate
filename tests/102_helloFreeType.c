@@ -117,6 +117,8 @@ int main(void) {
     FT_Vector pen; /* untransformed origin  */
     FT_Error error;
 
+    // apt install fonts-freefont-otf
+    //
     char *filename = "/usr/share/fonts/opentype/freefont/FreeSans.otf";
     char *text = "Hello World!";
 
@@ -129,7 +131,7 @@ int main(void) {
     error = FT_Init_FreeType( &library );              /* initialize library */
     RET_ERROR(!error, 1, "FT_Init_FreeType() failed");
 
-    error = FT_New_Face( library, filename, 0, &face );/* create face object */
+    error = FT_New_Face(library, filename, 0, &face);/* create face object */
     RET_ERROR(!error, 1, "FT_New_Face() failed");
 
     /* use 50pt at 100dpi */

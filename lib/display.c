@@ -162,7 +162,7 @@ static void kb_key(void* data, struct wl_keyboard* kb,
 static void kb_mod(void* data, struct wl_keyboard* kb,
         uint32_t ser, uint32_t dep, uint32_t lat,
         uint32_t lock, uint32_t grp) {
-    DASSERT(kbWindow);
+    //DASSERT(kbWindow);
     DSPEW();
 }
 

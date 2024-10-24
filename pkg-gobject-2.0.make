@@ -16,7 +16,7 @@ $(warning software package gobject-2.0 was not found)
 undefine GOBJECT2_LDFLAGS
 else
 # Spew what gobject-2.0 compiler options we have found
-$(info GOBJECT2_CFLAGS="$(GOBJECT2_CFLAGS)" GOBJECT2_LDFLAGS="$(GOBJECT2_LDFLAGS)")
+#$(info GOBJECT2_CFLAGS="$(GOBJECT2_CFLAGS)" GOBJECT2_LDFLAGS="$(GOBJECT2_LDFLAGS)")
 endif
 
 undefine libdir

@@ -17,7 +17,7 @@ $(warning software package pixman-1 was not found)
 undefine PIXMAN_LDFLAGS
 else
 # Spew what pixman compiler options we have found
-$(info PIXMAN_CFLAGS="$(PIXMAN_CFLAGS)" PIXMAN_LDFLAGS="$(PIXMAN_LDFLAGS)")
+#$(info PIXMAN_CFLAGS="$(PIXMAN_CFLAGS)" PIXMAN_LDFLAGS="$(PIXMAN_LDFLAGS)")
 endif
 
 undefine libdir

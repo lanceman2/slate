@@ -17,7 +17,7 @@ $(warning software package libharfbuzz was not found)
 undefine HARFBUZZ_LDFLAGS
 else
 # Spew what libharfbuzz compiler options we have found
-$(info HARFBUZZ_CFLAGS="$(HARFBUZZ_CFLAGS)" HARFBUZZ_LDFLAGS="$(HARFBUZZ_LDFLAGS)")
+#$(info HARFBUZZ_CFLAGS="$(HARFBUZZ_CFLAGS)" HARFBUZZ_LDFLAGS="$(HARFBUZZ_LDFLAGS)")
 endif
 
 undefine libdir

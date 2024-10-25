@@ -1118,14 +1118,19 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
-    if(zxdg_decoration_manager) {
+    if(zxdg_decoration_manager && !(flags & SL_NO_DECORATE)) {
         // Let the compositor do all the complicated window management
 	struct zxdg_toplevel_decoration_v1 *decoration =
 	        zxdg_decoration_manager_v1_get_toplevel_decoration(
 		        zxdg_decoration_manager, t->xdg_toplevel);
+        if(!decoration) {
+            ERROR("zxdg_decoration_manager_v1_get_toplevel_decoration() failed");
+            goto fail;
+        }
 	zxdg_toplevel_decoration_v1_set_mode(decoration,
 		ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     }
+
 
     // We will call ShowSurface() at a later time if the window is
     // not set as "showing" yet.

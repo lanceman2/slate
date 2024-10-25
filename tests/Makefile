@@ -8,6 +8,7 @@ include $(root)/pkg-gobject-2.0.make
 include $(root)/pkg-glib-2.0.make
 include $(root)/pkg-harfbuzz.make
 include $(root)/pkg-pixman-1.make
+include $(root)/pkg-libdecor-0.make
 
 
 
@@ -166,6 +167,14 @@ harfbuzz_SOURCES := harfbuzz.c
 harfbuzz_LDFLAGS := $(HARFBUZZ_LDFLAGS)
 harfbuzz_CPPFLAGS := $(HARFBUZZ_CFLAGS)
 endif
+
+
+ifneq ($(LIBDECOR_LDFLAGS),)
+libdecor_SOURCES := libdecor.c
+libdecor_LDFLAGS := $(LIBDECOR_LDFLAGS)
+libdecor_CPPFLAGS := $(LIBDECOR_CFLAGS)
+endif
+
 
 
 

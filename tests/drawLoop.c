@@ -77,7 +77,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, draw/*draw()*/, 0, true/*showing*/);
+            600, 600, 100, 10, draw/*draw()*/, 0, SL_SHOWING);
     if(!win) return 1; // fail
 
     fprintf(stderr, "\nPress Key <Alt-F4> on the window to exit\n\n");

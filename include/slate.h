@@ -60,6 +60,11 @@ enum SlDrawReturn {
 };
 
 
+// slWindow_createToplevel() bit option flags
+#define SL_SHOWING       001  //make showing in slWindow_createToplevel()
+#define SL_NO_DECORATE   002
+
+
 // Child widget packing gravity (for lack of a better word)
 //
 // Is there a "field/branch" in mathematics that we can know that will
@@ -134,7 +139,7 @@ SL_EXPORT struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
             uint32_t width, uint32_t height,
             uint32_t childrenWidth, uint32_t childrenHeight,
             uint32_t *childrenX, uint32_t *childrenY),
-        bool showing);
+        uint32_t flags);
 SL_EXPORT struct SlWindow *slWindow_createPopup(struct SlWindow *parent,
         uint32_t w, uint32_t h, int32_t x, int32_t y,
         int (*draw)(struct SlWindow *win, uint32_t *pixels,

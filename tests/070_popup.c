@@ -10,7 +10,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *w = slWindow_createToplevel(
-            d, 400, 300, 10, 10, 0, 0, true/*showing*/);
+            d, 400, 300, 10, 10, 0, 0, SL_SHOWING);
     if(!w) return 1; // fail
 
     struct SlWindow *p = slWindow_createPopup(

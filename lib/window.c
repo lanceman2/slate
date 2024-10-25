@@ -984,12 +984,11 @@ bool ShowSurface(struct SlWindow *win, bool dispatch) {
 
     bool needAllocate = win->needAllocate;
 
-    if(win->needAllocate)
+
+    if(needAllocate)
         slWindow_compose(win);
 
     if(!win->wl_buffer || needAllocate) {
-        DASSERT(!win->wl_buffer);
-        DASSERT(!win->pixels);
 
         // This is the first call to RecreateBuffer() for this
         // xdg_surface.   RecreateBuffer() may get called again from a
@@ -1081,7 +1080,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
             uint32_t width, uint32_t height,
             uint32_t childrenWidth, uint32_t childrenHeight,
             uint32_t *childrenX, uint32_t *childrenY),
-        bool showing) {
+        uint32_t flags) {
 
     struct SlToplevel *t = calloc(1, sizeof(*t));
     ASSERT(t, "calloc(1,%zu) failed", sizeof(*t));
@@ -1092,8 +1091,8 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 
     // Some defaults:
     win->surface.gravity = SlGravity_TB;
-    win->surface.showing = showing;
 
+    win->surface.showing = flags & SL_SHOWING;
 
     CHECK(pthread_mutex_lock(&d->mutex));
 
@@ -1128,10 +1127,9 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
 		ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     }
 
-
     // We will call ShowSurface() at a later time if the window is
     // not set as "showing" yet.
-    if(showing && ShowSurface(win, true))
+    if((flags & SL_SHOWING) && ShowSurface(win, true))
         goto fail;
 
     // Success:

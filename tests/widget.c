@@ -48,8 +48,7 @@ int main(void) {
     if(!d) return 1; // fail
 
     struct SlWindow *win = slWindow_createToplevel(d,
-            600, 600, 100, 10, 0/*draw()*/, 0,
-            false/*showing*/);
+            600, 600, 100, 10, 0/*draw()*/, 0, 0);
     if(!win) return 1; // fail
 
     slWidget_create((void *) win, 200, 100,

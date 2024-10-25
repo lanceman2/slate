@@ -88,8 +88,9 @@ dynamically load more libraries); see by running:
 ## Wayland Example C Code With A Little More Than Hello
 
 [wleird](https://github.com/emersion/wleird.git)
+[wleird](https://gitlab.freedesktop.org/emersion/wleird)
 Has stuff like cursor, resize, and subsurfaces.
-
+Window resizing does not work with GNONE 3.
 
 ## Testing libwayland-client.so and libffi.so for system resource leaks
 

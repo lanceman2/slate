@@ -417,6 +417,10 @@ void slWindow_compose(struct SlWindow *win) {
         // to code.
         win->surface.allocation.width  = win->width;
         win->surface.allocation.height = win->height;
+
+        DASSERT(win->surface.allocation.width);
+        DASSERT(win->surface.allocation.height);
+
         win->needAllocate = false;
         return;
     }
@@ -481,6 +485,10 @@ void slWindow_compose(struct SlWindow *win) {
     // it's not showing.
     if(!oldShowing)
         win->surface.showing = oldShowing;
+
+
+    DASSERT(win->surface.allocation.width);
+    DASSERT(win->surface.allocation.height);
 
     win->needAllocate = false;
 }

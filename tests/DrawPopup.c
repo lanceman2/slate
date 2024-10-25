@@ -70,7 +70,7 @@ int main(void) {
     if(!w) return 1; // fail
 
     struct SlWindow *p = slWindow_createPopup(
-            w, 400, 300, -4400, -10000, draw, 0, true/*showing*/);
+            w, 400, 300, -4400, -10000, draw, 0, SL_SHOWING);
     if(!p) return 1; // fail
 
     while(slDisplay_dispatch(d));

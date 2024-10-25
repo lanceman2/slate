@@ -27,7 +27,8 @@ struct SlDisplay *makeDisplayAndWindows(void) {
     struct SlDisplay *d = slDisplay_create();
 
     for(int i=0; i<NUM_WINS; ++i)
-        slWindow_createToplevel(d, 10, 10, 0, 0, 0, 0, true);
+        slWindow_createToplevel(d, 10, 10, 0, 0, 0, 0,
+                SL_SHOWING);
 
     return d;
 }

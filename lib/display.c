@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <wayland-client.h>
+#include <libdecor-0/libdecor.h>
 
 #include "xdg-shell-protocol.h"
 #include "xdg-decoration-protocol.h"
@@ -48,6 +49,7 @@ static struct SlWindow *kbWindow = 0;
 // returned from wl_display_connect().
 struct wl_display *wl_display = 0;
 struct zxdg_decoration_manager_v1 *zxdg_decoration_manager = 0;
+struct libdecor *libdecor = 0;
 
 static struct wl_registry *wl_registry = 0;
 static struct wl_seat *wl_seat = 0;
@@ -288,6 +290,13 @@ static inline void CleanupProcess(void) {
 
     DASSERT(wl_display);
 
+#if 0
+    if(libdecor) {
+        libdecor_unref(libdecor);
+        libdecor = 0;
+    }
+#endif
+
     if(kb) {
         DASSERT(wl_seat);
         // We leak memory if we don't call this.
@@ -350,6 +359,18 @@ static inline void CleanupProcess(void) {
     wl_display = 0;
 }
 
+
+static void libdecor_error(struct libdecor *context,
+		       enum libdecor_error error,
+		       const char *message) {
+    DSPEW("error=%d", error);
+}
+
+struct libdecor_interface libdecor_interface = {
+
+    .error = libdecor_error
+};
+
 // Return true on error and false on success.
 //
 static inline bool CheckDisplay(void) {
@@ -395,6 +416,14 @@ static inline bool CheckDisplay(void) {
         CleanupProcess();
         return true;
     }
+
+#if 0
+    if(!(libdecor = libdecor_new(wl_display, &libdecor_interface))) {
+        ERROR("libdecor_new(%p,) failed", wl_display);
+        CleanupProcess();
+        return true;
+    }
+#endif
 
     return false; // success
 }
@@ -529,4 +558,12 @@ bool slDisplay_dispatch(struct SlDisplay *d) {
     }
 
     return false;
+}
+
+
+
+bool slDisplay_haveXDGDecoration(const struct SlDisplay *d) {
+
+    DASSERT(d);
+    return (bool) zxdg_decoration_manager;
 }

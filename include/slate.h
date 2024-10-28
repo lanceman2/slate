@@ -62,7 +62,9 @@ enum SlDrawReturn {
 
 // slWindow_createToplevel() bit option flags
 #define SL_SHOWING       001  //make showing in slWindow_createToplevel()
-#define SL_NO_DECORATE   002
+#define SL_XDG_DECOR     002
+
+
 
 
 // Child widget packing gravity (for lack of a better word)
@@ -130,6 +132,7 @@ enum SlGreed {
 SL_EXPORT struct SlDisplay *slDisplay_create(void);
 SL_EXPORT bool slDisplay_dispatch(struct SlDisplay *d);
 SL_EXPORT void slDisplay_destroy(struct SlDisplay *d);
+SL_EXPORT bool slDisplay_haveXDGDecoration(const struct SlDisplay *d);
 
 SL_EXPORT struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         uint32_t w, uint32_t h, int32_t x, int32_t y,

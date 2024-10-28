@@ -1118,7 +1118,7 @@ struct SlWindow *slWindow_createToplevel(struct SlDisplay *d,
         goto fail;
     }
 
-    if(zxdg_decoration_manager && !(flags & SL_NO_DECORATE)) {
+    if(zxdg_decoration_manager && (flags & SL_XDG_DECOR)) {
         // Let the compositor do all the complicated window management
 	struct zxdg_toplevel_decoration_v1 *decoration =
 	        zxdg_decoration_manager_v1_get_toplevel_decoration(

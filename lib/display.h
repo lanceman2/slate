@@ -32,5 +32,7 @@ extern struct wl_display *wl_display;
 extern struct wl_shm *shm;
 extern struct wl_compositor *compositor;
 extern struct xdg_wm_base *xdg_wm_base;
+// zxdg_decoration_manager is not supported by mutter, the GNOME
+// wayland compositor.
 extern struct zxdg_decoration_manager_v1 *zxdg_decoration_manager;
-
+//extern struct libdecor *libdecor;
